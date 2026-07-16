@@ -16,7 +16,7 @@ Includes **CUDA / cuBLAS** integration to offload matrix multiplications across 
 ## Interactive Demo
 This repository contains a live interactive demo of the neural network's predictions and probability distributions trained on MNIST.
 
-> **Note on Generalization:** The `TrainMNIST` script is designed to test the framework's mathematical correctness and hardware acceleration. After extensive hyperparameter tuning, we scaled the architecture to 20 million parameters (`784 -> 4096 -> 4096 -> 10`) and trained on the full 60,000 MNIST dataset. The model successfully achieved an 84.4% accuracy on the 10,000 image test set, proving that our custom Autograd engine, backpropagation math, and cuBLAS integration are completely bug-free and capable of extracting generalized features from scratch!
+> **Note on Generalization:** The `TrainMNIST` script is designed to test the framework's mathematical correctness and hardware acceleration. After extensive hyperparameter tuning, we scaled the architecture to 20 million parameters (`784 -> 4096 -> 4096 -> 10`) and trained on a 10,000-image subset of the MNIST dataset. The model successfully achieved an 84.4% accuracy on the 10,000 image test set, proving that our custom Autograd engine, backpropagation math, and cuBLAS integration are completely bug-free and capable of extracting generalized features from scratch!
 
 ## Setup & Build
 

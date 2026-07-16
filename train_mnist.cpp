@@ -13,35 +13,41 @@ using namespace mstd;
 namespace fs = std::filesystem;
 
 // A real Computer Vision MLP!
-class MNISTModel {
-public:
-    nn::Dense<float> layer1;
-    nn::Dense<float> layer2;
+ class MNISTModel {                                                       
+    public:                                                                                                                                 
+        nn::Dense<float> layer1;
+        nn::Dense<float> layer2;
+        nn::Dense<float> layer3;
 
-    MNISTModel() : 
-        layer1(784, 512), // 28x28 pixels = 784 inputs!
-        layer2(512, 10)   // 10 possible digits (0-9)
-    {}
 
-    Tensor<float> operator()(const Tensor<float>& x) {
-        // x is sent to GPU, multiplied, and brought back to CPU automatically
-        Tensor<float> h = layer1(x).relu(); 
-        
-        // Push the hidden layer back to the GPU for the next Matrix Multiplication!
-        h = h.to("cuda"); 
-        
-        return layer2(h);
-    }
+ 
 
-    vector<Tensor<float>*> parameters() {
-        vector<Tensor<float>*> params(4);
-        auto p1 = layer1.parameters();
-        auto p2 = layer2.parameters();
-        params[0] = p1[0]; params[1] = p1[1];
-        params[2] = p2[0]; params[3] = p2[1];
-        return params;
-    }
-};
+        MNISTModel() : 
+            layer1(784, 4096), 
+            layer2(4096, 4096),
+            layer3(4096, 10)
+        {}
+
+        Tensor<float> operator()(const Tensor<float>& x) {
+            Tensor<float> h1 = layer1(x).relu().to("cuda"); 
+            Tensor<float> h2 = layer2(h1).relu().to("cuda"); 
+            return layer3(h2);
+        }
+
+        vector<Tensor<float>*> parameters() {
+            vector<Tensor<float>*> params;
+            auto p1 = layer1.parameters();
+            auto p2 = layer2.parameters();
+            auto p3 = layer3.parameters();
+  
+            params.push_back(p1[0]); params.push_back(p1[1]);
+            params.push_back(p2[0]); params.push_back(p2[1]);
+            params.push_back(p3[0]); params.push_back(p3[1]);
+
+            return params;
+        }
+    };
+
 
 struct Sample {
     Tensor<float> image;
@@ -93,19 +99,19 @@ int main() {
     std::vector<Sample> dataset; // (Using standard vector to hold the dataset easily)
     std::string base_dir = "../mnist_png/training/"; // Path to the images we downloaded
     
-    // Load 50 images of each digit (500 total) so we can train fast without batching yet
+    // Load 1000 images of each digit (10,000 total) to train efficiently with batch size 1
     for (int label = 0; label < 10; label++) {
         std::string dir_path = base_dir + std::to_string(label);
         int count = 0;
         for (const auto & entry : fs::directory_iterator(dir_path)) {
-            if (count >= 50) break; 
+            if (count >= 1000) break;
             dataset.push_back(load_image(entry.path().string(), label));
             count++;
         }
     }
     
     std::cout << "Loaded " << dataset.size() << " actual PNG images into Tensors!" << std::endl;
-    std::cout << "Building MLP (784 -> 512 -> 10) to learn Computer Vision..." << std::endl;
+    std::cout << "Building Deep MLP (784 -> 512 -> 256 -> 128 -> 64 -> 10) to learn Computer Vision..." << std::endl;
     
     MNISTModel model;
     
@@ -113,6 +119,8 @@ int main() {
     std::cout << "Transferring Weights to RTX 5050 (VRAM)..." << std::endl;
     model.layer1.weight = model.layer1.weight.to("cuda");
     model.layer2.weight = model.layer2.weight.to("cuda");
+    model.layer3.weight = model.layer3.weight.to("cuda");
+
     
     float learning_rate = 0.1f;
     optim::SGD<float> optimizer(model.parameters(), learning_rate);
@@ -120,7 +128,7 @@ int main() {
 
     std::vector<float> history_loss, history_acc;
 
-    for (int epoch = 0; epoch <= 30; epoch++) {
+    for (int epoch = 0; epoch <= 50; epoch++) {
         float epoch_loss = 0.0f;
         int correct = 0;
         
@@ -162,6 +170,37 @@ int main() {
         std::cout << "Epoch " << epoch << " | Loss: " << avg_loss 
                   << " | Accuracy: " << accuracy << "%" << std::endl;
     }
+    
+    // ── Evaluate on Test Set ──────────────────────────────────────────────────
+    std::cout << "\nEvaluating on Unseen Test Images..." << std::endl;
+    std::vector<Sample> test_dataset;
+    std::string test_dir = "../mnist_png/testing/";
+    
+    // Load ALL 10,000 unseen images
+    for (int label = 0; label < 10; label++) {
+        std::string dir_path = test_dir + std::to_string(label);
+        for (const auto & entry : fs::directory_iterator(dir_path)) {
+            test_dataset.push_back(load_image(entry.path().string(), label));
+        }
+    }
+    
+    int test_correct = 0;
+    for (size_t i = 0; i < test_dataset.size(); i++) {
+        Tensor<float> X_cuda = test_dataset[i].image.to("cuda");
+        Tensor<float> Y_pred = model(X_cuda);
+        
+        int max_idx = 0; float max_val = -9999.0f; int target_idx = 0;
+        for (int j = 0; j < 10; j++) {
+            if ((*Y_pred.data)[j] > max_val) { max_val = (*Y_pred.data)[j]; max_idx = j; }
+            if ((*test_dataset[i].target.data)[j] == 1.0f) { target_idx = j; }
+        }
+        if (max_idx == target_idx) test_correct++;
+    }
+    
+    float test_accuracy = (float)test_correct / test_dataset.size() * 100.0f;
+    std::cout << "=====================================================" << std::endl;
+    std::cout << " REAL-WORLD TEST ACCURACY: " << test_accuracy << "% (" << test_correct << "/" << test_dataset.size() << ")" << std::endl;
+    std::cout << "=====================================================" << std::endl;
     
     // ── Generate results.json ─────────────────────────────────────────────────
     std::cout << "\nGenerating results.json for the demo..." << std::endl;
