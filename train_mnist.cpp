@@ -19,8 +19,8 @@ public:
     nn::Dense<float> layer2;
 
     MNISTModel() : 
-        layer1(784, 64), // 28x28 pixels = 784 inputs!
-        layer2(64, 10)   // 10 possible digits (0-9)
+        layer1(784, 512), // 28x28 pixels = 784 inputs!
+        layer2(512, 10)   // 10 possible digits (0-9)
     {}
 
     Tensor<float> operator()(const Tensor<float>& x) {
@@ -105,7 +105,7 @@ int main() {
     }
     
     std::cout << "Loaded " << dataset.size() << " actual PNG images into Tensors!" << std::endl;
-    std::cout << "Building MLP (784 -> 64 -> 10) to learn Computer Vision..." << std::endl;
+    std::cout << "Building MLP (784 -> 512 -> 10) to learn Computer Vision..." << std::endl;
     
     MNISTModel model;
     

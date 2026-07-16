@@ -5,6 +5,14 @@
 #include <type_traits>
 
 namespace mstd {
+    template <typename T>
+    Tensor<T>::Tensor() { 
+        ctx = std::make_shared<AutogradContext<T>>(); 
+    }
+
+    template <typename T>
+    Tensor<T>::Tensor(mstd::vector<size_t> s, mstd::vector<size_t> st, std::shared_ptr<mstd::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda, std::shared_ptr<GPUData<T>> gd) 
+        : _shape(s), _strides(st), data(d), ctx(c), is_cuda(cuda), gpu_data(gd) {}
 
     template <typename T>
     Tensor<T>::Tensor(mstd::vector<size_t> shape) : _shape(shape) {
@@ -206,6 +214,21 @@ namespace mstd {
     }   
 
     template <typename T>
+    Tensor<T> Tensor<T>::relu() const {
+        Tensor<T> result(this->_shape);
+        for (size_t i = 0; i < this->data->size(); i++){
+            T val = (*this->data)[i];
+            (*result.data)[i] = val > 0 ? val : 0;
+        }
+        
+        result.ctx->requires_grad = this->ctx->requires_grad;
+        if (result.ctx->requires_grad) 
+            result.ctx->creator = std::make_shared<ReLU<T>>(*this, result);
+        
+        return result;
+    }
+
+    template <typename T>
     void build_topo(Tensor<T>& t, mstd::unordered_map<AutogradNode<T>*, bool>& visited, mstd::vector<Tensor<T>>& topo) {
         if (t.ctx->creator && !visited.contains(t.ctx->creator.get())) {
             visited.insert(t.ctx->creator.get(), true);
@@ -230,20 +253,6 @@ namespace mstd {
             topo[i].ctx->creator->backward();
         }   
     }
-
-    template <typename T>
-    Tensor<T> Tensor<T>::relu() const {
-        Tensor<T> result(this->_shape);
-        for (size_t i = 0; i < this->data->size(); i++){
-            T val = (*this->data)[i];
-            (*result.data)[i] = val > 0 ? val : 0;
-        }
-        
-        result.ctx->requires_grad = this->ctx->requires_grad;
-        if (result.ctx->requires_grad) 
-            result.ctx->creator = std::make_shared<ReLU<T>>(*this, result);
-        
-        return result;
-    }
 } 
+
 template class mstd::Tensor<float>;

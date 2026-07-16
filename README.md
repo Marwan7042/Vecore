@@ -11,7 +11,7 @@ Includes **CUDA / cuBLAS** integration to offload matrix multiplications across 
 * `nn::Dense`, `nn::ReLU` - Modular network layers
 * `nn::CrossEntropyLoss` - Softmax + Negative Log Likelihood loss
 * `optim::SGD` - Stochastic Gradient Descent optimizer
-* `TrainMNIST` - A complete end-to-end computer vision pipeline that trains on the MNIST dataset using the RTX 5050 GPU.
+* `TrainMNIST` - A complete end-to-end computer vision pipeline that trains a (784 -> 512 -> 10) network on the MNIST dataset using the RTX 5050 GPU, hitting 100% training accuracy.
 
 ## Interactive Demo
 This repository contains a live interactive demo of the neural network's predictions and probability distributions trained on MNIST.

@@ -10,8 +10,58 @@
 #include <cublas_v2.h>
 
 namespace mstd{
-    template <typename T>                                                                                                   
-    class AutogradNode; 
+    template <typename T> class AutogradNode; 
+    template <typename T> struct GPUData;
+    template <typename T> struct AutogradContext;
+    template <typename T> class Tensor;
+
+    template <typename T>
+    class Tensor {
+    public:
+        mstd::vector<size_t> _shape;
+        mstd::vector<size_t> _strides;
+        std::shared_ptr<mstd::vector<T>> data;
+        std::shared_ptr<AutogradContext<T>> ctx;
+        
+        bool is_cuda = false;
+        std::shared_ptr<GPUData<T>> gpu_data = nullptr;
+
+        // Default constructor: Initializes an empty tensor with a new AutogradContext
+        Tensor();
+
+        // Parameterized internal constructor: Used to construct a tensor from pre-existing data, context, and GPU pointers
+        Tensor(mstd::vector<size_t> s, mstd::vector<size_t> st, std::shared_ptr<mstd::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda=false, std::shared_ptr<GPUData<T>> gd=nullptr);
+
+        // Shape constructor: Allocates memory for a tensor of the given shape and initializes it with zeros
+        Tensor(mstd::vector<size_t> shape);
+
+        // Transfers the tensor's memory to the specified device (e.g., "cuda" or "cpu"). Returns a new tensor on that device.
+        Tensor<T> to(const std::string& device) const;
+
+        // Accesses an element in the tensor by its multidimensional index. Returns a reference to the element.
+        T& operator()(const mstd::vector<size_t>& dims);
+        
+        // Returns a new tensor that represents the transposed version of this tensor (swaps the last two dimensions).
+        Tensor<T> transpose() const;    
+
+        // Adds two tensors element-wise and records the operation in the computation graph. Returns the sum tensor.
+        Tensor<T> operator+(const Tensor<T>& other) const;
+
+        // Subtracts 'other' from this tensor element-wise and records the operation in the computation graph. Returns the difference tensor.
+        Tensor<T> operator-(const Tensor<T>& other) const;
+
+        // Performs matrix multiplication between this tensor and 'other', recording it in the graph. Returns the product tensor.
+        Tensor<T> operator*(const Tensor<T>& other) const;
+
+        // Applies the Rectified Linear Unit (ReLU) activation function element-wise. Returns the activated tensor.
+        Tensor<T> relu() const;
+
+        // Initiates the reverse-mode auto-differentiation (backpropagation) from this tensor, computing gradients for all dependent tensors.
+        void backward();
+
+        // Prints the shape, strides, and actual data contents of the tensor to standard output.
+        void print() const;
+    };
 
     template <typename T>
     struct GPUData {
@@ -26,47 +76,14 @@ namespace mstd{
     };
 
     template <typename T>
-    class Tensor;
-
-    template <typename T>
     struct AutogradContext {
         bool requires_grad = false;
         std::shared_ptr<Tensor<T>> grad = nullptr;
         std::shared_ptr<AutogradNode<T>> creator = nullptr;
     };
 
-    template <typename T>
-    class Tensor {
-    public:
-        mstd::vector<size_t> _shape;
-        mstd::vector<size_t> _strides;
-        std::shared_ptr<mstd::vector<T>> data;
-        std::shared_ptr<AutogradContext<T>> ctx;
-        
-        bool is_cuda = false;
-        std::shared_ptr<GPUData<T>> gpu_data = nullptr;
-
-        Tensor() { ctx = std::make_shared<AutogradContext<T>>(); }
-        Tensor(mstd::vector<size_t> s, mstd::vector<size_t> st, std::shared_ptr<mstd::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda=false, std::shared_ptr<GPUData<T>> gd=nullptr) 
-            : _shape(s), _strides(st), data(d), ctx(c), is_cuda(cuda), gpu_data(gd) {}
-    public:
-        Tensor(mstd::vector<size_t> shape);
-
-        Tensor<T> to(const std::string& device) const;
-
-        T& operator()(const mstd::vector<size_t>& dims);
-        
-        Tensor<T> transpose() const;    
-        Tensor<T> operator+(const Tensor<T>& other) const;
-        Tensor<T> operator-(const Tensor<T>& other) const;
-        Tensor<T> operator*(const Tensor<T>& other) const;
-        Tensor<T> relu() const;
-
-        void backward();
-
-        void print() const;
-    };
-
+    // Base class for all operations in the computation graph. 
+    // Defines the contract that every mathematical operation must fulfill to support backpropagation.
     template <typename T>
     class AutogradNode {
     public:
@@ -75,6 +92,8 @@ namespace mstd{
         virtual ~AutogradNode() = default;
     };
     
+    // Graph node representing element-wise addition.
+    // Propagates the upstream gradient equally to both input tensors.
     template <typename T>
     class AddNode : public AutogradNode<T> {
     private:
@@ -101,6 +120,8 @@ namespace mstd{
         }
     };
 
+    // Graph node representing element-wise subtraction.
+    // Propagates the upstream gradient positively to the left operand and negatively to the right operand.
     template <typename T>
     class SubNode : public AutogradNode<T> {
     private:
@@ -127,6 +148,8 @@ namespace mstd{
         }
     };
 
+    // Graph node representing matrix multiplication.
+    // Uses the matrix calculus chain rule (A_grad = out_grad * B^T, B_grad = A^T * out_grad) to propagate gradients.
     template <typename T>
     class MulNode : public AutogradNode<T> {
     private:
@@ -155,6 +178,8 @@ namespace mstd{
         }
     };
 
+    // Graph node representing the Rectified Linear Unit (ReLU) activation.
+    // Propagates gradients only if the original forward pass value was greater than zero.
     template <typename T>
     class ReLU : public AutogradNode<T> {
     private:
