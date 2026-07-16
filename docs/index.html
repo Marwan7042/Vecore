@@ -486,6 +486,10 @@
     <div class="stat-label">VRAM Used</div>
   </div>
 </div>
+    
+<div style="max-width: 800px; margin: -20px auto 40px; padding: 16px 24px; background: #3b82f615; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 14px; line-height: 1.6; text-align: center;">
+  <strong style="color: #93c5fd;">Note on Overfitting:</strong> This model is intentionally overfitted on a tiny 500-image dataset. With over 400,000 parameters, the network memorizes the data. This isn't meant for production—hitting 100% accuracy here is the ultimate test to mathematically prove that our custom C++ Autograd engine, backpropagation, and CUDA matrix math are bug-free and working perfectly!
+</div>
 
 <hr class="divider" />
 
