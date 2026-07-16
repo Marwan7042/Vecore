@@ -165,9 +165,9 @@ int main() {
     
     // ── Generate results.json ─────────────────────────────────────────────────
     std::cout << "\nGenerating results.json for the demo..." << std::endl;
-    fs::create_directories("../demo");
+    fs::create_directories("../docs");
     
-    std::ofstream json_file("../demo/results.json");
+    std::ofstream json_file("../docs/results.json");
     json_file << "{\n";
     
     json_file << "  \"history\": {\n    \"loss\": [";
@@ -202,6 +202,6 @@ int main() {
     json_file << "  ]\n}\n";
     json_file.close();
     
-    std::cout << "Done! Open demo/index.html to view the results." << std::endl;
+    std::cout << "Done! Open docs/index.html to view the results." << std::endl;
     return 0;
 }
