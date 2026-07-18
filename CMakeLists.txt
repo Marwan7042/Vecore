@@ -10,8 +10,8 @@ set(CMAKE_CUDA_ARCHITECTURES "75")
 find_package(BLAS REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
-# Add your MySTL library so we can link to MySTL::MySTL
-add_subdirectory(${CMAKE_SOURCE_DIR}/../MySTL build_mystl)
+# Add your libvc library so we can link to libvc::libvc
+add_subdirectory(${CMAKE_SOURCE_DIR}/../libvc build_mystl)
 
 add_subdirectory(src)
 add_subdirectory(tests)

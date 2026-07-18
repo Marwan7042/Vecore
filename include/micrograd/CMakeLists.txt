@@ -8,6 +8,6 @@ add_library(micrograd
 
 add_library(micrograd::micrograd ALIAS micrograd)
 
-target_link_libraries(PUBLIC MySTL)
+target_link_libraries(PUBLIC libvc)
 
 target_include_directories(micrograd PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)

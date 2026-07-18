@@ -8,4 +8,4 @@ target_include_directories(micrograd PUBLIC
 
 set_source_files_properties(Tensor.cpp PROPERTIES LANGUAGE CUDA)
 
-target_link_libraries(micrograd PUBLIC MySTL::MySTL BLAS::BLAS CUDA::cublas CUDA::cudart)
+target_link_libraries(micrograd PUBLIC libvc::libvc BLAS::BLAS CUDA::cublas CUDA::cudart)
