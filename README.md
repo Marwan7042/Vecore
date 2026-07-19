@@ -1,4 +1,5 @@
 # Vecore C++
+
 A Deep Learning framework built entirely from scratch in C++. This project replicates the core mathematical engine of PyTorch (Autograd, Tensors, Optimizers, Modules) with no third-party ML dependencies. 
 
 Includes **CUDA / cuBLAS** integration to offload matrix multiplications across the PCIe bus to an NVIDIA GPU.
@@ -21,10 +22,3 @@ This repository contains a live interactive demo of the neural network's predict
 ## Setup & Build
 
 Requirements: C++17, CMake, NVIDIA CUDA Toolkit.
-
-```bash
-mkdir build && cd build
-cmake ..
-make -j
-./TrainMNIST
-```
