@@ -4,6 +4,7 @@
 #include "vecore/optim.h"
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -19,13 +20,10 @@ namespace fs = std::filesystem;
         nn::Dense<float> layer2;
         nn::Dense<float> layer3;
 
-
- 
-
         MNISTModel() : 
-            layer1(784, 4096), 
-            layer2(4096, 4096),
-            layer3(4096, 10)
+            layer1(784, 2048), 
+            layer2(2048, 1024),
+            layer3(1024, 10)
         {}
 
         Tensor<float> operator()(const Tensor<float>& x) {
@@ -129,7 +127,7 @@ int main() {
     std::vector<float> history_loss, history_acc;
     // int patience = 3;
     // int count_perfect = 0;
-    for (int epoch = 0; epoch <= 20; epoch++) {
+    for (int epoch = 0; epoch <= 150; epoch++) {
         float epoch_loss = 0.0f;
         int correct = 0;
         
@@ -245,5 +243,43 @@ int main() {
     json_file.close();
     
     std::cout << "Done! Open docs/index.html to view the results." << std::endl;
+    
+    // ── Export Trained Weights for Browser Inference ──────────────────────────
+    std::cout << "\nExporting trained weights for interactive web demo..." << std::endl;
+    
+    // Copy weights back from GPU to CPU before exporting
+    model.layer1.weight = model.layer1.weight.to("cpu");
+    model.layer2.weight = model.layer2.weight.to("cpu");
+    model.layer3.weight = model.layer3.weight.to("cpu");
+    
+    std::ofstream weights_file(std::string(PROJECT_ROOT_DIR) + "/docs/weights.json");
+    weights_file << std::setprecision(8);
+    weights_file << "{\n";
+    
+    // Helper lambda to write a tensor as a flat JSON array
+    auto write_tensor = [&](const std::string& name, const Tensor<float>& t, bool last = false) {
+        weights_file << "  \"" << name << "\": {";
+        weights_file << "\"shape\": [" << t._shape[0] << ", " << t._shape[1] << "], ";
+        weights_file << "\"data\": [";
+        for (size_t i = 0; i < t.data->size(); i++) {
+            weights_file << (*t.data)[i];
+            if (i + 1 < t.data->size()) weights_file << ",";
+        }
+        weights_file << "]}";
+        if (!last) weights_file << ",";
+        weights_file << "\n";
+    };
+    
+    write_tensor("w1", model.layer1.weight);
+    write_tensor("b1", model.layer1.bias);
+    write_tensor("w2", model.layer2.weight);
+    write_tensor("b2", model.layer2.bias);
+    write_tensor("w3", model.layer3.weight);
+    write_tensor("b3", model.layer3.bias, true);
+    
+    weights_file << "}\n";
+    weights_file.close();
+    std::cout << "Weights exported to docs/weights.json!" << std::endl;
+    
     return 0;
 }

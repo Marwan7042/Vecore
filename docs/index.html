@@ -1,853 +1,807 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vecore — C++ Deep Learning Framework Demo</title>
-  <style>
-    /* ── FONTS & ROOT ─────────────────────────────── */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vecore | C++ Deep Learning Framework</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        :root {
+            --bg:       #07090f;
+            --bg2:      #0d1117;
+            --bg3:      #13192a;
+            --border:   #1e2d4a;
+            --blue:     #3b82f6;
+            --blue2:    #60a5fa;
+            --cyan:     #22d3ee;
+            --green:    #4ade80;
+            --red:      #f87171;
+            --purple:   #a78bfa;
+            --yellow:   #fbbf24;
+            --text:     #e2e8f0;
+            --muted:    #64748b;
+            --card-bg:  #0d1117cc;
+        }
 
-    :root {
-      --bg:       #07090f;
-      --bg2:      #0d1117;
-      --bg3:      #13192a;
-      --border:   #1e2d4a;
-      --blue:     #3b82f6;
-      --blue2:    #60a5fa;
-      --cyan:     #22d3ee;
-      --green:    #4ade80;
-      --red:      #f87171;
-      --purple:   #a78bfa;
-      --yellow:   #fbbf24;
-      --text:     #e2e8f0;
-      --muted:    #64748b;
-      --card-bg:  #0d1117cc;
-    }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+        /* Particle/dot grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.3;
+            z-index: -1;
+            pointer-events: none;
+        }
 
-    /* ── HERO ──────────────────────────────────────── */
-    .hero {
-      position: relative;
-      padding: 80px 40px 60px;
-      text-align: center;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, #1e3a8a33, transparent),
-                  radial-gradient(ellipse 50% 40% at 80% 50%, #7c3aed22, transparent);
-      pointer-events: none;
-    }
-    .hero-tag {
-      display: inline-block;
-      background: linear-gradient(135deg, #1e3a8a, #3730a3);
-      border: 1px solid #3b82f655;
-      border-radius: 999px;
-      padding: 6px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--blue2);
-      margin-bottom: 24px;
-    }
-    .hero h1 {
-      font-size: clamp(36px, 6vw, 72px);
-      font-weight: 900;
-      line-height: 1.1;
-      background: linear-gradient(135deg, #fff 0%, #93c5fd 50%, #a78bfa 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 16px;
-    }
-    .hero p {
-      font-size: 18px;
-      color: var(--muted);
-      max-width: 640px;
-      margin: 0 auto 48px;
-      line-height: 1.7;
-    }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
 
-    /* ── STAT CARDS ─────────────────────────────────── */
-    .stats-row {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-      padding: 0 40px 60px;
-    }
-    .stat-card {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px 32px;
-      text-align: center;
-      min-width: 160px;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .stat-card:hover { transform: translateY(-4px); border-color: var(--blue); }
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, #3b82f608, transparent);
-      pointer-events: none;
-    }
-    .stat-value {
-      font-size: 42px;
-      font-weight: 900;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .stat-label {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--muted);
-    }
+        /* Typography */
+        h1, h2, h3 { font-weight: 800; line-height: 1.2; }
+        p { color: var(--muted); margin-bottom: 1rem; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #ffffff, var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-    /* ── SECTIONS ───────────────────────────────────── */
-    .section {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 40px 80px;
-    }
-    .section-title {
-      font-size: 28px;
-      font-weight: 800;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .section-title .badge {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: var(--blue);
-      color: #fff;
-    }
-    .section-sub {
-      color: var(--muted);
-      font-size: 15px;
-      margin-bottom: 32px;
-    }
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 6rem 0 4rem;
+            position: relative;
+        }
 
-    /* ── ARCHITECTURE DIAGRAM ───────────────────────── */
-    .arch-diagram {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 40px;
-      margin-bottom: 60px;
-      overflow-x: auto;
-    }
-    .arch-flow {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      min-width: 800px;
-    }
-    .arch-node {
-      background: var(--bg2);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 20px;
-      text-align: center;
-      min-width: 120px;
-      transition: all 0.3s;
-      cursor: default;
-    }
-    .arch-node:hover { border-color: var(--blue); transform: scale(1.05); }
-    .arch-node .node-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
-    .arch-node .node-name  { font-size: 15px; font-weight: 700; color: #fff; }
-    .arch-node .node-shape { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--blue2); margin-top: 4px; }
-    .arch-arrow {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0 8px;
-      color: var(--muted);
-    }
-    .arch-arrow span { font-size: 22px; line-height: 1; }
-    .arch-arrow small { font-size: 10px; color: var(--muted); white-space: nowrap; }
-    .node-input   { border-color: #1e3a8a; }
-    .node-dense   { border-color: #3730a3; }
-    .node-relu    { border-color: #0e7490; }
-    .node-output  { border-color: #065f46; }
-    .node-loss    { border-color: #7c2d12; }
+        .tag {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--blue2);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            letter-spacing: 0.05em;
+        }
 
-    /* ── CHART ──────────────────────────────────────── */
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 60px;
-    }
-    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
-    .chart-card {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px;
-    }
-    .chart-title {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: #fff;
-    }
-    canvas { width: 100% !important; display: block; }
+        .hero h1 {
+            font-size: clamp(4rem, 8vw, 6rem);
+            letter-spacing: -0.05em;
+            margin-bottom: 1.5rem;
+        }
 
-    /* ── FILTER BAR ─────────────────────────────────── */
-    .filter-bar {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-      align-items: center;
-    }
-    .filter-btn {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 18px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-    .filter-btn:hover, .filter-btn.active {
-      background: var(--blue);
-      border-color: var(--blue);
-      color: #fff;
-    }
-    .filter-btn.wrong.active { background: var(--red); border-color: var(--red); }
-    .filter-label { font-size: 13px; color: var(--muted); font-weight: 600; margin-right: 4px; }
+        .hero p {
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 0 auto;
+            color: var(--text);
+        }
 
-    /* ── IMAGE GRID ─────────────────────────────────── */
-    .image-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 12px;
-    }
-    .img-card {
-      background: var(--bg3);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .img-card:hover { transform: translateY(-3px); border-color: var(--blue); box-shadow: 0 8px 32px #3b82f622; }
-    .img-card.correct { border-color: #16a34a55; }
-    .img-card.correct:hover { border-color: var(--green); }
-    .img-card.wrong   { border-color: #dc262655; }
-    .img-card.wrong:hover   { border-color: var(--red); }
-    .img-card img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: contain;
-      border-radius: 8px;
-      image-rendering: pixelated;
-      filter: brightness(1.3) contrast(1.2);
-      background: #111;
-      display: block;
-    }
-    .img-card .pred-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 8px;
-    }
-    .pred-label { font-size: 12px; font-weight: 700; }
-    .pred-true  { color: var(--green); }
-    .pred-wrong { color: var(--red); }
-    .conf-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      background: var(--bg2);
-      border-radius: 6px;
-      padding: 2px 6px;
-      color: var(--muted);
-    }
-    .status-dot {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-    .status-dot.correct { background: var(--green); }
-    .status-dot.wrong   { background: var(--red); }
+        /* Stats Row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 4rem 0;
+        }
 
-    /* ── MODAL ──────────────────────────────────────── */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: #000000cc;
-      backdrop-filter: blur(8px);
-      z-index: 100;
-      display: none;
-      place-items: center;
-    }
-    .modal-overlay.open { display: grid; }
-    .modal {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 36px;
-      max-width: 420px;
-      width: 90%;
-      position: relative;
-      animation: modalIn 0.25s ease;
-    }
-    @keyframes modalIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .modal-close {
-      position: absolute;
-      top: 16px; right: 16px;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      width: 32px; height: 32px;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 16px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .modal-close:hover { color: #fff; border-color: var(--blue); }
-    .modal img {
-      width: 120px; height: 120px;
-      object-fit: contain;
-      image-rendering: pixelated;
-      background: #111;
-      border-radius: 12px;
-      margin: 0 auto 20px;
-      display: block;
-      filter: brightness(1.5) contrast(1.2);
-    }
-    .modal h3 { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-    .modal .modal-sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-    .prob-bars { display: flex; flex-direction: column; gap: 6px; }
-    .prob-row { display: flex; align-items: center; gap: 8px; }
-    .prob-row .digit { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; width: 14px; text-align: center; }
-    .prob-bar-bg { flex: 1; background: var(--bg2); border-radius: 4px; height: 8px; overflow: hidden; }
-    .prob-bar-fill { height: 100%; border-radius: 4px; background: var(--blue); transition: width 0.6s ease; }
-    .prob-row .prob-pct { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; width: 40px; text-align: right; }
-    .prob-row.is-target .prob-bar-fill { background: var(--green); }
-    .prob-row.is-pred .prob-bar-fill   { background: var(--blue2); }
-    .prob-row.is-wrong .prob-bar-fill  { background: var(--red); }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
 
-    /* ── STACK SECTION ──────────────────────────────── */
-    .stack-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .stack-card {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      transition: all 0.2s;
-    }
-    .stack-card:hover { border-color: var(--blue); transform: translateY(-2px); }
-    .stack-icon { font-size: 28px; margin-bottom: 12px; }
-    .stack-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
-    .stack-card p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
-    .stack-tag {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 999px;
-      margin-top: 10px;
-    }
-    .tag-cpp    { background: #1e3a8a33; color: #93c5fd; border: 1px solid #1e3a8a; }
-    .tag-cuda   { background: #14532d33; color: #86efac; border: 1px solid #14532d; }
-    .tag-math   { background: #4c1d9533; color: #c4b5fd; border: 1px solid #4c1d95; }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--blue);
+            box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.2);
+        }
 
-    /* ── DIVIDER ────────────────────────────────────── */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0 40px 60px;
-    }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
 
-    /* ── FOOTER ─────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      padding: 40px;
-      color: var(--muted);
-      font-size: 13px;
-      border-top: 1px solid var(--border);
-    }
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
 
-    /* ── LOADING ────────────────────────────────────── */
-    #loading {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-      gap: 16px;
-    }
-    .spinner {
-      width: 48px; height: 48px;
-      border: 3px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loading p { color: var(--muted); font-size: 14px; }
-  </style>
+        /* Interactive Demo Section */
+        .demo-section {
+            margin: 6rem 0;
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-header h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            backdrop-filter: blur(16px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--blue), transparent);
+            opacity: 0.5;
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            padding: 10px;
+            background: var(--bg2);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.1);
+            animation: pulse-glow 4s infinite alternate;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.05); border-color: var(--border); }
+            100% { box-shadow: 0 0 40px rgba(167, 139, 250, 0.2); border-color: var(--purple); }
+        }
+
+        #drawCanvas {
+            background-color: #111;
+            border-radius: 0.5rem;
+            cursor: crosshair;
+            /* 28x28 logical, scaled to 336x336 via CSS/attributes */
+            width: 336px;
+            height: 336px;
+            image-rendering: pixelated;
+            display: block;
+            touch-action: none;
+        }
+        
+        /* Pseudo-element for subtle grid */
+        .canvas-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 12px 12px; /* 336/28 = 12 */
+            pointer-events: none;
+            border-radius: 0.5rem;
+        }
+
+        .btn-clear {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--muted);
+        }
+
+        /* Results Area */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .prediction-box {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 2rem;
+        }
+
+        .pred-label {
+            font-size: 1.25rem;
+            color: var(--muted);
+            margin-right: 1.5rem;
+        }
+
+        .pred-digit {
+            font-size: 6rem;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--white);
+            text-shadow: 0 0 40px rgba(34, 211, 238, 0.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .pred-conf {
+            font-size: 1.5rem;
+            color: var(--cyan);
+            margin-left: 1rem;
+            font-weight: 600;
+        }
+
+        .bars-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .prob-row {
+            display: flex;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+        }
+
+        .prob-label {
+            width: 20px;
+            color: var(--muted);
+        }
+
+        .prob-bar-wrapper {
+            flex-grow: 1;
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            margin: 0 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prob-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--blue), var(--cyan));
+            border-radius: 4px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .prob-row.active .prob-label {
+            color: var(--cyan);
+            font-weight: bold;
+        }
+        
+        .prob-row.active .prob-bar {
+            background: linear-gradient(90deg, var(--cyan), var(--green));
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        .prob-value {
+            width: 45px;
+            text-align: right;
+            color: var(--muted);
+        }
+        
+        .prob-row.active .prob-value {
+            color: var(--cyan);
+        }
+
+        /* Loading / Error overlay */
+        .status-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(13, 17, 23, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 1.5rem;
+            text-align: center;
+            padding: 2rem;
+            transition: opacity 0.5s ease;
+        }
+        
+        .status-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--blue);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-msg {
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        .status-sub {
+            color: var(--muted);
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            max-width: 400px;
+        }
+
+        /* Architecture Section */
+        .arch-section {
+            margin: 6rem 0;
+            text-align: center;
+        }
+
+        .arch-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 3rem;
+        }
+
+        .arch-node {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .arch-node:hover {
+            border-color: var(--blue2);
+            background: var(--bg3);
+            transform: translateY(-2px);
+        }
+
+        .arch-node span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .arch-arrow {
+            color: var(--muted);
+            font-size: 1.5rem;
+        }
+
+        /* Generalization Note */
+        .info-box {
+            background: rgba(59, 130, 246, 0.05);
+            border-left: 4px solid var(--blue);
+            padding: 1.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin: 4rem auto;
+            max-width: 800px;
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 4rem 0 2rem;
+            border-top: 1px solid var(--border);
+            margin-top: 4rem;
+        }
+
+        footer a {
+            color: var(--blue);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        footer a:hover {
+            color: var(--blue2);
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .glass-card {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                padding: 2rem;
+            }
+            .arch-diagram {
+                flex-direction: column;
+            }
+            .arch-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
 </head>
 <body>
 
-<!-- Loading Screen -->
-<div id="loading">
-  <div class="spinner"></div>
-  <p>Loading neural network results...</p>
-</div>
+    <div class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <div class="tag">C++ &middot; CUDA &middot; FROM SCRATCH</div>
+            <h1 class="gradient-text">Vecore</h1>
+            <p>A GPU-Accelerated Deep Learning Framework built entirely from scratch in C++. No PyTorch. No TensorFlow. Pure mathematics.</p>
+        </header>
 
-<!-- Modal -->
-<div class="modal-overlay" id="modal" onclick="closeModal(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
-    <img id="modal-img" src="" alt="" />
-    <h3 id="modal-title"></h3>
-    <p class="modal-sub" id="modal-sub"></p>
-    <div class="prob-bars" id="modal-probs"></div>
-  </div>
-</div>
+        <!-- Stats Row -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">3.7M</div>
+                <div class="stat-label">Parameters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">87.61%</div>
+                <div class="stat-label">Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1,000</div>
+                <div class="stat-label">Training Images</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">CUDA</div>
+                <div class="stat-label">GPU Accelerated</div>
+            </div>
+        </section>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-tag">🧠 C++ Deep Learning from Scratch</div>
-  <h1>Vecore</h1>
-  <p>A GPU-accelerated deep learning framework built entirely in C++ — from raw memory allocation to CUDA kernel dispatch — trained on real handwritten digit images.</p>
-</div>
+        <!-- Interactive Demo Section -->
+        <section class="demo-section">
+            <div class="demo-header">
+                <h2>Interactive Inference</h2>
+                <p>Draw a digit (0-9) to see the Vecore-trained model predict in real-time.</p>
+            </div>
 
-<!-- Stats -->
-<div class="stats-row" id="stats-row">
-  <div class="stat-card">
-    <div class="stat-value" id="stat-acc" style="background: linear-gradient(135deg,#4ade80,#22d3ee); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">—</div>
-    <div class="stat-label">Final Accuracy</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value" id="stat-correct" style="color:#4ade80">—</div>
-    <div class="stat-label">Correct / 500</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value" id="stat-loss" style="color:#60a5fa">—</div>
-    <div class="stat-label">Final Loss</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value" style="color:#a78bfa">20,037,642</div>
-    <div class="stat-label">Parameters</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value" style="color:#fbbf24">31</div>
-    <div class="stat-label">Epochs</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-value" style="color:#f87171">~80MB</div>
-    <div class="stat-label">VRAM Used</div>
-  </div>
-</div>
-    
-<div style="max-width: 800px; margin: -20px auto 40px; padding: 16px 24px; background: #3b82f615; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 14px; line-height: 1.6; text-align: center;">
-  <strong style="color: #93c5fd;">Note on Generalization:</strong> After extensive hyperparameter tuning, this model was trained on a 1,000-image subset of the MNIST dataset. With 3.7 million parameters, the network learned generalized features and successfully hit an 87.61% accuracy on the training set! This is the ultimate test to mathematically prove that our custom C++ Autograd engine, backpropagation, and CUDA matrix math are bug-free and working perfectly!
-</div>
+            <div class="glass-card" id="demoCard">
+                <!-- Status Overlay -->
+                <div class="status-overlay" id="statusOverlay">
+                    <div class="loader" id="loader"></div>
+                    <div class="status-msg" id="statusMsg">Loading weights...</div>
+                    <div class="status-sub" id="statusSub">Downloading 3.7M parameters</div>
+                </div>
 
-<hr class="divider" />
+                <!-- Left: Canvas -->
+                <div class="canvas-container">
+                    <div class="canvas-wrapper">
+                        <canvas id="drawCanvas" width="28" height="28"></canvas>
+                    </div>
+                    <button class="btn-clear" id="btnClear">Clear Canvas</button>
+                </div>
 
-<!-- Architecture -->
-<div class="section">
-  <div class="section-title">Neural Network Architecture <span class="badge">Design</span></div>
-  <p class="section-sub">A 3-layer Multi-Layer Perceptron that reads 28×28 pixel images and classifies them as digits 0–9</p>
-  <div class="arch-diagram">
-    <div class="arch-flow">
-      <div class="arch-node node-input">
-        <div class="node-label">Input</div>
-        <div class="node-name">Image</div>
-        <div class="node-shape">[1 × 784]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>matmul</small></div>
-      <div class="arch-node node-dense">
-        <div class="node-label">Layer 1</div>
-        <div class="node-name">Dense</div>
-        <div class="node-shape">[784 → 4096]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>ReLU</small></div>
-      <div class="arch-node node-relu">
-        <div class="node-label">Activation</div>
-        <div class="node-name">ReLU</div>
-        <div class="node-shape">[1 × 4096]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>matmul</small></div>
-      <div class="arch-node node-dense">
-        <div class="node-label">Layer 2</div>
-        <div class="node-name">Dense</div>
-        <div class="node-shape">[4096 → 4096]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>ReLU</small></div>
-      <div class="arch-node node-relu">
-        <div class="node-label">Activation</div>
-        <div class="node-name">ReLU</div>
-        <div class="node-shape">[1 × 4096]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>matmul</small></div>
-      <div class="arch-node node-dense">
-        <div class="node-label">Layer 3</div>
-        <div class="node-name">Dense</div>
-        <div class="node-shape">[4096 → 10]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span><small>softmax</small></div>
-      <div class="arch-node node-output">
-        <div class="node-label">Output</div>
-        <div class="node-name">Logits</div>
-        <div class="node-shape">[1 × 10]</div>
-      </div>
-      <div class="arch-arrow"><span>→</span></div>
-      <div class="arch-node node-loss">
-        <div class="node-label">Loss</div>
-        <div class="node-name">CrossEntropy</div>
-        <div class="node-shape">scalar</div>
-      </div>
-    </div>
-  </div>
+                <!-- Right: Results -->
+                <div class="results-container">
+                    <div class="prediction-box">
+                        <div class="pred-label">Prediction</div>
+                        <div class="pred-digit" id="predDigit">-</div>
+                        <div class="pred-conf" id="predConf">0%</div>
+                    </div>
+                    
+                    <div class="bars-container" id="barsContainer">
+                        <!-- Bars generated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
 
-  <!-- Training Charts -->
-  <div class="section-title">Training History <span class="badge">Live Data</span></div>
-  <p class="section-sub">Real loss and accuracy curves from your training run — every point is an epoch.</p>
-  <div class="charts-grid">
-    <div class="chart-card">
-      <div class="chart-title">📉 Cross-Entropy Loss</div>
-      <canvas id="lossChart" height="220"></canvas>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">📈 Classification Accuracy (%)</div>
-      <canvas id="accChart" height="220"></canvas>
-    </div>
-  </div>
-</div>
+        <!-- Architecture Section -->
+        <section class="arch-section">
+            <h2>Network Architecture</h2>
+            <div class="arch-diagram">
+                <div class="arch-node">Input<span>28 &times; 28 (784)</span></div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-node">Dense + ReLU<span>2048 units</span></div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-node">Dense + ReLU<span>1024 units</span></div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-node">Dense<span>10 units</span></div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-node">Softmax<span>Probabilities</span></div>
+            </div>
+        </section>
 
-<hr class="divider" />
+        <!-- Note on Generalization -->
+        <div class="info-box">
+            <strong>Note on Training:</strong> After extensive hyperparameter tuning, this model was trained on a 1,000-image subset of the MNIST dataset. With 3.7 million parameters (784 &rarr; 2048 &rarr; 1024 &rarr; 10), the network achieved 87.61% accuracy on the training set.
+        </div>
 
-<!-- Image Grid -->
-<div class="section">
-  <div class="section-title">Predictions vs Ground Truth <span class="badge">500 Images</span></div>
-  <p class="section-sub">Click any image to see the full softmax probability distribution. Green border = correct, Red = wrong.</p>
-  <div class="filter-bar">
-    <span class="filter-label">Filter:</span>
-    <button class="filter-btn active" onclick="filterGrid('all', this)">All (500)</button>
-    <button class="filter-btn" onclick="filterGrid('correct', this)">✓ Correct</button>
-    <button class="filter-btn wrong" onclick="filterGrid('wrong', this)">✗ Wrong</button>
-    <span style="margin-left:auto; font-size:13px; color:var(--muted)">Digit:</span>
-    <button class="filter-btn" onclick="filterDigit(-1, this)">All</button>
-    <button class="filter-btn" onclick="filterDigit(0, this)">0</button>
-    <button class="filter-btn" onclick="filterDigit(1, this)">1</button>
-    <button class="filter-btn" onclick="filterDigit(2, this)">2</button>
-    <button class="filter-btn" onclick="filterDigit(3, this)">3</button>
-    <button class="filter-btn" onclick="filterDigit(4, this)">4</button>
-    <button class="filter-btn" onclick="filterDigit(5, this)">5</button>
-    <button class="filter-btn" onclick="filterDigit(6, this)">6</button>
-    <button class="filter-btn" onclick="filterDigit(7, this)">7</button>
-    <button class="filter-btn" onclick="filterDigit(8, this)">8</button>
-    <button class="filter-btn" onclick="filterDigit(9, this)">9</button>
-  </div>
-  <div class="image-grid" id="image-grid"></div>
-</div>
+        <!-- Footer -->
+        <footer>
+            <p>Built from scratch by Marwan Mahmoud</p>
+            <p style="margin-top: 0.5rem;"><a href="#" target="_blank">View on GitHub</a></p>
+        </footer>
+    </div>
 
-<hr class="divider" />
-
-<!-- What We Built -->
-<div class="section">
-  <div class="section-title">What We Built From Scratch <span class="badge">The Stack</span></div>
-  <p class="section-sub">Every component — from raw heap allocation to GPU kernel dispatch — was written in C++ with zero third-party ML libraries.</p>
-  <div class="stack-grid">
-    <div class="stack-card">
-      <div class="stack-icon">🗂️</div>
-      <h4>mstd::vector&lt;T&gt;</h4>
-      <p>A custom dynamic array built from scratch with raw heap pointers, amortized O(1) push_back via doubling, and the Rule of Five for safe copy/move semantics.</p>
-      <span class="stack-tag tag-cpp">C++ Memory</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">📐</div>
-      <h4>Tensor&lt;T&gt;</h4>
-      <p>N-dimensional array with shape, stride-based indexing, and zero-copy transpose. Supports both CPU (RAM) and GPU (VRAM) memory backends simultaneously.</p>
-      <span class="stack-tag tag-cpp">C++ / CUDA</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🔗</div>
-      <h4>Autograd Engine</h4>
-      <p>Dynamic computation graph built during the forward pass. AutogradNode polymorphism + Depth-First topological sort for correct reverse-mode differentiation.</p>
-      <span class="stack-tag tag-math">Calculus</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">➕</div>
-      <h4>AddNode / MulNode</h4>
-      <p>Differentiable add and matrix multiply operations. MulNode backward computes dL/dA = dL/dC · Bᵀ and dL/dB = Aᵀ · dL/dC via gradient accumulation.</p>
-      <span class="stack-tag tag-math">Backprop</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">⚡</div>
-      <h4>ReLU Activation</h4>
-      <p>ReLUNode stores the mask of positive pre-activations during the forward pass and gates gradients through it during the backward pass.</p>
-      <span class="stack-tag tag-math">Non-linearity</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🧱</div>
-      <h4>nn::Dense Layer</h4>
-      <p>Fully-connected layer with Xavier weight initialization. operator() runs (x · W) + b and wires the result into the autograd graph automatically.</p>
-      <span class="stack-tag tag-cpp">Neural Layer</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">📉</div>
-      <h4>MSELoss &amp; CrossEntropyLoss</h4>
-      <p>Two pluggable loss functions. CrossEntropy runs Softmax + Negative Log-Likelihood. Its backward gradient is elegantly just P_i − Target_i.</p>
-      <span class="stack-tag tag-math">Loss Functions</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🏃</div>
-      <h4>optim::SGD</h4>
-      <p>Stochastic Gradient Descent with zero_grad() to clear accumulators and step() to apply weight = weight − lr · grad. GPU weights are re-synced after each update.</p>
-      <span class="stack-tag tag-math">Optimizer</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🖼️</div>
-      <h4>MNIST PNG Loader</h4>
-      <p>stb_image reads raw .png files from disk. Pixels are normalized to [0,1] and labels are one-hot encoded into [1×10] target tensors.</p>
-      <span class="stack-tag tag-cpp">Data Pipeline</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🔢</div>
-      <h4>OpenBLAS Integration</h4>
-      <p>cblas_sgemm dispatches AVX-optimized matrix multiplication on the CPU. Handles transposed views correctly via stride inspection.</p>
-      <span class="stack-tag tag-cpp">CPU Math</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🎮</div>
-      <h4>GPUData&lt;T&gt; + .to("cuda")</h4>
-      <p>RAII wrapper around cudaMalloc/cudaFree. Tensor::to() uses cudaMemcpy to transfer data across the PCIe bus between RAM and the RTX 5050's VRAM.</p>
-      <span class="stack-tag tag-cuda">CUDA</span>
-    </div>
-    <div class="stack-card">
-      <div class="stack-icon">🚀</div>
-      <h4>cuBLAS Matrix Multiply</h4>
-      <p>cublasSgemm dispatches matrix multiplication directly to the GPU's CUDA cores. Column-major/row-major mismatch handled by swapping A↔B in the API call.</p>
-      <span class="stack-tag tag-cuda">GPU Acceleration</span>
-    </div>
-  </div>
-</div>
-
-<footer class="footer">
-  Built entirely in C++ · cuBLAS + OpenBLAS · NVIDIA RTX 5050 · MNIST Dataset · No ML libraries used
-</footer>
-
-<!-- Chart.js via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-let allSamples = [];
-let currentFilter = 'all';
-let currentDigit = -1;
-
-// ── Draw a simple chart ──────────────────────────────────────────────────────
-function makeChart(id, label, data, color) {
-  const ctx = document.getElementById(id).getContext('2d');
-  const epochs = Array.from({length: data.length}, (_, i) => i);
-
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: epochs,
-      datasets: [{
-        label,
-        data,
-        borderColor: color,
-        backgroundColor: color + '22',
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.35,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: color,
-      }]
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#0d1117',
-          borderColor: '#1e2d4a',
-          borderWidth: 1,
-          titleColor: '#e2e8f0',
-          bodyColor: '#94a3b8',
+    <!-- Application Logic -->
+    <script>
+        // --- UI Setup ---
+        const barsContainer = document.getElementById('barsContainer');
+        const probBars = [];
+        
+        for (let i = 0; i < 10; i++) {
+            const row = document.createElement('div');
+            row.className = 'prob-row';
+            row.id = `prob-row-${i}`;
+            
+            row.innerHTML = `
+                <div class="prob-label">${i}</div>
+                <div class="prob-bar-wrapper">
+                    <div class="prob-bar" id="prob-bar-${i}"></div>
+                </div>
+                <div class="prob-value" id="prob-val-${i}">0%</div>
+            `;
+            barsContainer.appendChild(row);
+            probBars.push({
+                row: row,
+                bar: document.getElementById(`prob-bar-${i}`),
+                val: document.getElementById(`prob-val-${i}`)
+            });
         }
-      },
-      scales: {
-        x: { grid: { color: '#1e2d4a' }, ticks: { color: '#64748b', font: { size: 11 } } },
-        y: { grid: { color: '#1e2d4a' }, ticks: { color: '#64748b', font: { size: 11 } } }
-      }
-    }
-  });
-}
 
-// ── Render image grid ────────────────────────────────────────────────────────
-function renderGrid() {
-  const grid = document.getElementById('image-grid');
-  grid.innerHTML = '';
-  const visible = allSamples.filter(s => {
-    const matchFilter = currentFilter === 'all' || s.status === currentFilter;
-    const matchDigit  = currentDigit === -1 || s.label === currentDigit;
-    return matchFilter && matchDigit;
-  });
+        // --- Math & Inference Engine ---
+        let model = null;
 
-  visible.forEach((s, i) => {
-    const card = document.createElement('div');
-    card.className = `img-card ${s.status}`;
-    card.innerHTML = `
-      <div class="status-dot ${s.status}"></div>
-      <img src="${s.path}" alt="digit ${s.label}" loading="lazy" />
-      <div class="pred-row">
-        <span class="pred-label ${s.status === 'correct' ? 'pred-true' : 'pred-wrong'}">
-          ${s.status === 'correct' ? '✓' : '✗'} ${s.prediction}
-        </span>
-        <span class="conf-badge">${(s.confidence * 100).toFixed(0)}%</span>
-      </div>
-    `;
-    card.addEventListener('click', () => openModal(s));
-    grid.appendChild(card);
-  });
-}
+        function add(a, b) {
+            let res = new Float32Array(a.length);
+            for(let i=0; i<a.length; i++) res[i] = a[i] + b[i];
+            return res;
+        }
 
-function filterGrid(type, btn) {
-  currentFilter = type;
-  document.querySelectorAll('.filter-bar .filter-btn').forEach(b => {
-    if (b.onclick?.toString().includes('filterGrid')) b.classList.remove('active');
-  });
-  btn.classList.add('active');
-  renderGrid();
-}
+        // Extremely optimized matmul for flat arrays where left matrix is 1xN
+        function matmul(input, weight, rows, cols, outCols) {
+            let res = new Float32Array(outCols);
+            for(let i = 0; i < cols; i++) {
+                let v = input[i];
+                if (v === 0) continue; // Skip zero pixels/activations (huge speedup)
+                let offset = i * outCols;
+                for(let j = 0; j < outCols; j++) {
+                    res[j] += v * weight[offset + j];
+                }
+            }
+            return res;
+        }
 
-function filterDigit(digit, btn) {
-  currentDigit = digit;
-  document.querySelectorAll('.filter-bar .filter-btn').forEach(b => {
-    if (b.onclick?.toString().includes('filterDigit')) b.classList.remove('active');
-  });
-  btn.classList.add('active');
-  renderGrid();
-}
+        function relu(arr) {
+            let res = new Float32Array(arr.length);
+            for(let i=0; i<arr.length; i++) res[i] = Math.max(0, arr[i]);
+            return res;
+        }
 
-// ── Modal ────────────────────────────────────────────────────────────────────
-function openModal(s) {
-  document.getElementById('modal-img').src = s.path;
-  const correct = s.status === 'correct';
-  document.getElementById('modal-title').textContent =
-    `${correct ? '✓' : '✗'} Predicted: ${s.prediction}`;
-  document.getElementById('modal-title').style.color = correct ? '#4ade80' : '#f87171';
-  document.getElementById('modal-sub').textContent =
-    `True label: ${s.label}  ·  Confidence: ${(s.confidence * 100).toFixed(1)}%`;
+        function softmax(arr) {
+            let max = -Infinity;
+            for(let i=0; i<arr.length; i++) if(arr[i] > max) max = arr[i];
+            
+            let exps = new Float32Array(arr.length);
+            let sum = 0;
+            for(let i=0; i<arr.length; i++) {
+                let e = Math.exp(arr[i] - max);
+                exps[i] = e;
+                sum += e;
+            }
+            
+            for(let i=0; i<arr.length; i++) exps[i] /= sum;
+            return exps;
+        }
 
-  const bars = document.getElementById('modal-probs');
-  bars.innerHTML = '';
-  s.probs.forEach((p, d) => {
-    const isTarget = d === s.label;
-    const isPred   = d === s.prediction;
-    const isWrong  = isPred && !correct;
-    const row = document.createElement('div');
-    row.className = `prob-row${isTarget ? ' is-target' : ''}${isPred && correct ? ' is-pred' : ''}${isWrong ? ' is-wrong' : ''}`;
-    row.innerHTML = `
-      <span class="digit">${d}</span>
-      <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${(p*100).toFixed(1)}%"></div></div>
-      <span class="prob-pct">${(p*100).toFixed(1)}%</span>
-    `;
-    bars.appendChild(row);
-  });
+        function predict(pixelData) {
+            if (!model) return new Float32Array(10);
+            
+            // Layer 1
+            let h1_raw = matmul(pixelData, model.w1, 1, 784, 2048);
+            let h1 = relu(add(h1_raw, model.b1));
+            
+            // Layer 2
+            let h2_raw = matmul(h1, model.w2, 1, 2048, 1024);
+            let h2 = relu(add(h2_raw, model.b2));
+            
+            // Layer 3 (Logits)
+            let logits_raw = matmul(h2, model.w3, 1, 1024, 10);
+            let logits = add(logits_raw, model.b3);
+            
+            return softmax(logits);
+        }
 
-  document.getElementById('modal').classList.add('open');
-}
+        function updateUI(probs) {
+            let maxProb = 0;
+            let maxIdx = -1;
+            
+            for (let i = 0; i < 10; i++) {
+                let p = probs[i] * 100;
+                if (p > maxProb) { maxProb = p; maxIdx = i; }
+                
+                probBars[i].bar.style.width = `${p}%`;
+                probBars[i].val.textContent = `${Math.round(p)}%`;
+                probBars[i].row.classList.remove('active');
+            }
+            
+            if (maxIdx >= 0 && maxProb > 1) { // Only show if somewhat confident
+                document.getElementById('predDigit').textContent = maxIdx;
+                document.getElementById('predConf').textContent = `${Math.round(maxProb)}%`;
+                probBars[maxIdx].row.classList.add('active');
+            } else {
+                document.getElementById('predDigit').textContent = '-';
+                document.getElementById('predConf').textContent = '0%';
+            }
+        }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modal')) {
-    document.getElementById('modal').classList.remove('open');
-  }
-}
+        // --- Model Loading ---
+        async function loadModel() {
+            try {
+                const response = await fetch('weights.json');
+                if (!response.ok) throw new Error('Weights not found');
+                const raw = await response.json();
+                
+                // Convert to Float32Arrays for speed
+                model = {
+                    w1: new Float32Array(raw.w1.data),
+                    b1: new Float32Array(raw.b1.data),
+                    w2: new Float32Array(raw.w2.data),
+                    b2: new Float32Array(raw.b2.data),
+                    w3: new Float32Array(raw.w3.data),
+                    b3: new Float32Array(raw.b3.data)
+                };
+                
+                document.getElementById('statusOverlay').classList.add('hidden');
+                
+            } catch (err) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('statusMsg').textContent = 'Model Not Found';
+                document.getElementById('statusMsg').style.color = 'var(--red)';
+                document.getElementById('statusSub').textContent = 'Train the model first by running ./build/examples/TrainMNIST';
+            }
+        }
 
-// ── Main loader ──────────────────────────────────────────────────────────────
-fetch('results.json')
-  .then(r => {
-    if (!r.ok) throw new Error('results.json not found');
-    return r.json();
-  })
-  .then(data => {
-    // Stats
-    const lastAcc  = data.history.accuracy.at(-1);
-    const lastLoss = data.history.loss.at(-1);
-    const correct  = data.samples.filter(s => s.label === s.prediction).length;
-    document.getElementById('stat-acc').textContent     = lastAcc.toFixed(1) + '%';
-    document.getElementById('stat-correct').textContent = correct + '/500';
-    document.getElementById('stat-loss').textContent    = lastLoss.toFixed(3);
+        // --- Canvas Drawing Logic ---
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // Setup internal canvas scaling matching CSS (336 / 28 = 12x multiplier via transforms conceptually, 
+        // but it's simpler to track mouse coords and map back to 28x28)
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Initialize black background
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, 28, 28);
 
-    // Charts
-    makeChart('lossChart', 'Loss',     data.history.loss,     '#3b82f6');
-    makeChart('accChart',  'Accuracy', data.history.accuracy, '#4ade80');
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            
+            // Map 336px display to 28px coordinate
+            const x = (clientX - rect.left) / (rect.width / 28);
+            const y = (clientY - rect.top) / (rect.height / 28);
+            return { x, y };
+        }
 
-    // Samples
-    allSamples = data.samples.map(s => ({
-      ...s,
-      status: s.label === s.prediction ? 'correct' : 'wrong'
-    }));
-    renderGrid();
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            
+            const pos = getPos(e);
+            const x = pos.x;
+            const y = pos.y;
+            
+            // Draw anti-aliased soft brush
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Extra softness wrapper
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+            ctx.fill();
 
-    document.getElementById('loading').style.display = 'none';
-  })
-  .catch(err => {
-    document.getElementById('loading').innerHTML = `
-      <div style="text-align:center; padding:40px; max-width:500px">
-        <div style="font-size:48px;margin-bottom:16px">⚠️</div>
-        <h2 style="color:#f87171;margin-bottom:12px">results.json not found</h2>
-        <p style="color:#64748b;line-height:1.6">Please compile and run <code style="color:#60a5fa">TrainMNIST</code> first to generate the results file, then open this page from the <code style="color:#60a5fa">demo/</code> folder.</p>
-        <pre style="margin-top:20px;background:#0d1117;border:1px solid #1e2d4a;border-radius:12px;padding:16px;text-align:left;font-size:13px;color:#94a3b8">cd build
-make -j28
-./TrainMNIST
-# Then open demo/index.html</pre>
-      </div>`;
-  });
-</script>
+            triggerInference();
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; draw(e); });
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', () => { isDrawing = false; });
+        
+        canvas.addEventListener('touchstart', (e) => { isDrawing = true; draw(e); }, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        window.addEventListener('touchend', () => { isDrawing = false; });
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, 28, 28);
+            updateUI(new Float32Array(10));
+        });
+
+        // --- Debounced Inference ---
+        let timeout;
+        function triggerInference() {
+            if(timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                if(!model) return;
+                
+                // Extract 28x28 grayscale data (784 flat array, 0.0-1.0)
+                const imgData = ctx.getImageData(0, 0, 28, 28);
+                const flatData = new Float32Array(784);
+                
+                for (let i = 0; i < 784; i++) {
+                    // Extract red channel (since we draw in grayscale white on black, R=G=B)
+                    // Normalizing 0-255 to 0.0-1.0
+                    flatData[i] = imgData.data[i * 4] / 255.0;
+                }
+                
+                const probs = predict(flatData);
+                updateUI(probs);
+                
+            }, 50); // ~50ms debounce for responsiveness
+        }
+
+        // Initialize
+        loadModel();
+
+    </script>
 </body>
 </html>
