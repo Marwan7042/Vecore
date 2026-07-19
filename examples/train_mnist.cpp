@@ -99,12 +99,12 @@ int main() {
     std::vector<Sample> dataset; // (Using standard vector to hold the dataset easily)
     std::string base_dir = std::string(PROJECT_ROOT_DIR) + "/datasets/mnist_png/training/"; // Path to the images we downloaded
     
-    // Load 1000 images of each digit (10,000 total) to train efficiently with batch size 1
+    // Load 100 images of each digit (1000 total) to train efficiently with batch size 1
     for (int label = 0; label < 10; label++) {
         std::string dir_path = base_dir + std::to_string(label);
         int count = 0;
         for (const auto & entry : fs::directory_iterator(dir_path)) {
-            if (count >= 1000) break;
+            if (count >= 100) break;
             dataset.push_back(load_image(entry.path().string(), label));
             count++;
         }
