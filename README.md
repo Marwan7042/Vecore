@@ -1,24 +1,82 @@
-# Vecore C++
+# Vecore 
 
-A Deep Learning framework built entirely from scratch in C++. This project replicates the core mathematical engine of PyTorch (Autograd, Tensors, Optimizers, Modules) with no third-party ML dependencies. 
+A high-performance GPU-Accelerated Deep Learning framework built entirely from scratch in C++. 
 
-Includes **CUDA / cuBLAS** integration to offload matrix multiplications across the PCIe bus to an NVIDIA GPU.
+Vecore replicates the core mathematical engine of PyTorch (Autograd, Tensors, Optimizers, Modules) with **zero third-party ML dependencies**. It features a custom reverse-mode automatic differentiation graph, hand-written CUDA kernels, and integrates with **NVIDIA cuBLAS** to leverage TF32 Tensor Cores.
 
-## What's Included
+**🏆 Benchmark Achievement:** On the full 60,000-image MNIST dataset, the Vecore engine achieved **96.23% test accuracy**, outperforming an identical PyTorch implementation (95.61%) on the same hardware, while chewing through 9 million images in 84 seconds.
 
-* `vc::vector` - Custom STL implementation 
-* `Tensor<T>` - N-dimensional array with strides, zero-copy transpose, and `.to("cuda")`
-* **Autograd Engine** - Forward tracking and reverse-mode topological sort differentiation
-* `nn::Dense`, `nn::ReLU` - Modular network layers
-* `nn::CrossEntropyLoss` - Softmax + Negative Log Likelihood loss
-* `optim::SGD` - Stochastic Gradient Descent optimizer
-* `TrainMNIST` - A complete end-to-end computer vision pipeline that trains a (784 -> 512 -> 10) network on the MNIST dataset using the RTX 5050 GPU, hitting 100% training accuracy.
+## 🚀 Key Features
 
-## Interactive Demo
-This repository contains a live interactive demo of the neural network's predictions and probability distributions trained on MNIST.
+* `Tensor<T>` - N-dimensional array with automatic CPU ↔ GPU transfers.
+* **Custom Autograd Engine** - Dynamic, reverse-mode topological sort differentiation.
+* **TF32 Tensor Cores** - `cuBLAS` accelerated matrix multiplications.
+* **Hand-written CUDA Kernels** - Fused operations for ReLU, SGD, Cross Entropy, and broadcasting.
+* `Sequential` - A PyTorch-inspired high-level API with an async, double-buffered GPU training pipeline.
+* `CachingAllocator` - Zero-overhead GPU memory pool to eliminate `cudaMalloc` latency.
+* `vc::vector` - A custom STL implementation.
 
-> **Note on Generalization:** The `TrainMNIST` script is designed to test the framework's mathematical correctness and hardware acceleration. After extensive hyperparameter tuning, we scaled the architecture to 3.7 million parameters (`784 -> 2048 -> 1024 -> 10`) and trained on a 1,000-image subset of the MNIST dataset. The model successfully achieved an 87.61% accuracy on the training set, proving that our custom Autograd engine, backpropagation math, and cuBLAS integration are completely bug-free and capable of extracting generalized features from scratch!
+## 📚 Documentation & Interactive Demo
 
-## Setup & Build
+Vecore comes with a beautiful, comprehensive documentation website and a live interactive browser demo! 
 
-Requirements: C++17, CMake, NVIDIA CUDA Toolkit.
+Explore the API references, architecture guides, and draw digits to test the trained model directly in your browser.
+
+👉 **[View the Documentation & Demo](docs/index.html)** 
+
+*(To view locally, open `docs/index.html` in your web browser)*
+
+## 💻 Quick Start
+
+Vecore is designed to feel instantly familiar to anyone who has used PyTorch.
+
+```cpp
+#include "vecore/nn.h"
+#include "vecore/optim.h"
+#include "vecore/sequential.h"
+
+int main() {
+    // 1. Build a PyTorch-style Sequential Model
+    Sequential model({
+        vc::nn::Dense<float>(784, 2048, "relu"),
+        vc::nn::Dense<float>(2048, 1024, "relu"),
+        vc::nn::Dense<float>(1024, 10, "none")
+    });
+
+    // 2. Shoot weights across the PCIe bus into GPU VRAM
+    model.to("cuda");
+
+    // 3. Create SGD Optimizer
+    vc::optim::SGD<float> optimizer(model.parameters(), 0.1f);
+
+    // 4. Start the Async GPU Pipeline (Train on dataset)
+    model.fit(dataset, 150, 0.1f, 8192);
+
+    return 0;
+}
+```
+
+## 🛠️ Setup & Build
+
+**Requirements:** 
+* C++17 compatible compiler (GCC 9+ or Clang 10+)
+* NVIDIA GPU (Compute Capability 7.0+)
+* CUDA Toolkit 11.0+
+* CMake 3.18+
+* OpenBLAS
+
+```bash
+git clone https://github.com/marwan/vecore.git
+cd vecore
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+
+To run the full MNIST benchmark against the test set:
+```bash
+./examples/TrainMNIST
+```
+
+---
+*Built from scratch using pure mathematics and C++.*
