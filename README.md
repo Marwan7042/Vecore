@@ -66,7 +66,7 @@ int main() {
 * OpenBLAS
 
 ```bash
-git clone https://github.com/Marwan7042/Vecore.com.git
+git clone https://github.com/Marwan7042/Vecore.git
 cd vecore
 mkdir build && cd build
 cmake ..
