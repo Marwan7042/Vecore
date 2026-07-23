@@ -8,41 +8,47 @@
 </head>
 <body>
     <nav class="navbar">
-        <div class="navbar-brand">Vecore</div>
-        <div class="navbar-links">
-            <a href="index.html">Docs</a>
-            <a href="https://github.com/marwan/vecore">GitHub</a>
+    <div class="nav-content">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
         </div>
-    </nav>
-
-    <div class="container">
+    </div>
+</nav>
+    <div class="layout-container">
         <aside class="sidebar">
-            <div class="sidebar-section">
-                <h3>Getting Started</h3>
-                <ul>
-                    <li><a href="intro.html">Introduction</a></li>
-                    <li><a href="install.html">Installation</a></li>
-                    <li><a href="quickstart.html">Quickstart</a></li>
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3>Core Concepts</h3>
-                <ul>
-                    <li><a href="tensor.html">Tensor API</a></li>
-                    <li><a href="autograd.html">Autograd</a></li>
-                    <li><a href="nn.html">Neural Networks</a></li>
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3>Advanced</h3>
-                <ul>
-                    <li><a href="export.html">Model Exporting</a></li>
-                    <li><a href="cuda.html" class="active">CUDA Acceleration</a></li>
-                </ul>
-            </div>
-        </aside>
-
+    <div class="sidebar-section">
+        <ul class="sidebar-nav">
+            <li><a href="getting-started.html">Getting Started</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Core API</div>
+        <ul class="sidebar-nav">
+            <li><a href="tensor.html">Tensor</a></li>
+            <li><a href="nn.html">Dense Layer</a></li>
+            <li><a href="sequential.html">Sequential</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Training</div>
+        <ul class="sidebar-nav">
+            <li><a href="optim.html">Optimizers</a></li>
+            <li><a href="data.html">Data Loading</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Advanced</div>
+        <ul class="sidebar-nav">
+            <li><a href="cuda.html" class="active">CUDA Acceleration</a></li>
+        </ul>
+    </div>
+</aside>
         <main class="content">
+
             <div class="breadcrumb">Docs &gt; Advanced &gt; CUDA Acceleration</div>
             
             <h1>CUDA Acceleration</h1>
@@ -217,11 +223,8 @@ Stream 1 (Copy):                  [Copy B1 to GPU]                [Copy B2 to GP
                     <strong>Warning:</strong> Always compile CUDA code with <code>-O3</code>. Without it, the nvcc compiler disables register optimization and loop unrolling, causing up to 10x slowdowns as variables spill to global memory.
                 </div>
             </section>
+        
         </main>
     </div>
-
-    <footer>
-        <p>Built from scratch by Marwan Mahmoud</p>
-    </footer>
 </body>
 </html>

@@ -10,47 +10,48 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="layout">
-        <!-- Navbar -->
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <span class="logo">Vecore</span>
-            </div>
-            <div class="navbar-links">
-                <a href="#">GitHub</a>
-                <a href="#">Community</a>
-            </div>
-        </nav>
+    <nav class="navbar">
+    <div class="nav-content">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
+        </div>
+    </div>
+</nav>
+    <div class="layout-container">
+        <aside class="sidebar">
+    <div class="sidebar-section">
+        <ul class="sidebar-nav">
+            <li><a href="getting-started.html">Getting Started</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Core API</div>
+        <ul class="sidebar-nav">
+            <li><a href="tensor.html" class="active">Tensor</a></li>
+            <li><a href="nn.html">Dense Layer</a></li>
+            <li><a href="sequential.html">Sequential</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Training</div>
+        <ul class="sidebar-nav">
+            <li><a href="optim.html">Optimizers</a></li>
+            <li><a href="data.html">Data Loading</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Advanced</div>
+        <ul class="sidebar-nav">
+            <li><a href="cuda.html">CUDA Acceleration</a></li>
+        </ul>
+    </div>
+</aside>
+        <main class="content">
 
-        <div class="container">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav class="sidebar-nav">
-                    <div class="nav-group">
-                        <div class="nav-group-title">Getting Started</div>
-                        <a href="installation.html" class="nav-link">Installation</a>
-                        <a href="quickstart.html" class="nav-link">Quickstart</a>
-                    </div>
-                    <div class="nav-group">
-                        <div class="nav-group-title">Core API</div>
-                        <a href="tensor.html" class="nav-link active">Tensor</a>
-                        <a href="dense.html" class="nav-link">Dense Layer</a>
-                        <a href="sequential.html" class="nav-link">Sequential</a>
-                    </div>
-                    <div class="nav-group">
-                        <div class="nav-group-title">Training</div>
-                        <a href="optimizers.html" class="nav-link">Optimizers</a>
-                        <a href="dataloading.html" class="nav-link">Data Loading</a>
-                    </div>
-                    <div class="nav-group">
-                        <div class="nav-group-title">Advanced</div>
-                        <a href="cuda.html" class="nav-link">CUDA Acceleration</a>
-                    </div>
-                </nav>
-            </aside>
-
-            <!-- Main Content -->
-            <main class="main-content">
                 <div class="breadcrumb">
                     <a href="../index.html">Docs</a> > <a href="#">Core API</a> > <span>Tensor</span>
                 </div>
@@ -417,8 +418,8 @@
                         </tbody>
                     </table>
                 </section>
-            </main>
-        </div>
+            
+        </main>
     </div>
 </body>
 </html>

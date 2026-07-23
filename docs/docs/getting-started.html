@@ -11,45 +11,47 @@
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-content">
-            <a href="../index.html" class="logo">Vecore</a>
-            <div class="nav-links">
-                <a href="../index.html">Home</a>
-                <a href="../index.html#demo">Demo</a>
-                <a href="getting-started.html" class="active">Docs</a>
-                <a href="#">GitHub</a>
-            </div>
+    <div class="nav-content">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active" class="active">Docs</a>
+            <a href="#">GitHub</a>
         </div>
-    </nav>
-
-    <div class="docs-container">
+    </div>
+</nav>
+    <div class="layout-container">
         <aside class="sidebar">
-            <div class="sidebar-nav">
-                <div class="nav-group">
-                    <a href="getting-started.html" class="nav-item active">Getting Started</a>
-                </div>
-                
-                <div class="nav-group">
-                    <div class="nav-title">Core API</div>
-                    <a href="tensor.html" class="nav-item">Tensor</a>
-                    <a href="nn.html" class="nav-item">Dense Layer</a>
-                    <a href="sequential.html" class="nav-item">Sequential</a>
-                </div>
-                
-                <div class="nav-group">
-                    <div class="nav-title">Training</div>
-                    <a href="optim.html" class="nav-item">Optimizers</a>
-                    <a href="data.html" class="nav-item">Data Loading</a>
-                </div>
-                
-                <div class="nav-group">
-                    <div class="nav-title">Advanced</div>
-                    <a href="cuda.html" class="nav-item">CUDA Acceleration</a>
-                </div>
-            </div>
-        </aside>
-
+    <div class="sidebar-section">
+        <ul class="sidebar-nav">
+            <li><a href="getting-started.html" class="active">Getting Started</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Core API</div>
+        <ul class="sidebar-nav">
+            <li><a href="tensor.html">Tensor</a></li>
+            <li><a href="nn.html">Dense Layer</a></li>
+            <li><a href="sequential.html">Sequential</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Training</div>
+        <ul class="sidebar-nav">
+            <li><a href="optim.html">Optimizers</a></li>
+            <li><a href="data.html">Data Loading</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Advanced</div>
+        <ul class="sidebar-nav">
+            <li><a href="cuda.html">CUDA Acceleration</a></li>
+        </ul>
+    </div>
+</aside>
         <main class="content">
+
             <div class="breadcrumb">Docs &gt; Getting Started</div>
             
             <h1>Getting Started with Vecore</h1>
@@ -195,16 +197,8 @@
                     <p>Learn how to loop over data, compute loss, backpropagate, and step optimizers.</p>
                 </a>
             </div>
+        
         </main>
     </div>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <p>Built from scratch by Marwan Mahmoud</p>
-            <div class="footer-links">
-                <a href="#">GitHub</a>
-            </div>
-        </div>
-    </footer>
 </body>
 </html>

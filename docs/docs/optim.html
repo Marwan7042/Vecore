@@ -9,6 +9,7 @@
 </head>
 <body>
     <nav class="navbar">
+    <div class="nav-content">
         <a href="../index.html" class="logo">Vecore</a>
         <div class="nav-links">
             <a href="../index.html">Home</a>
@@ -16,30 +17,39 @@
             <a href="getting-started.html" class="active">Docs</a>
             <a href="#">GitHub</a>
         </div>
-    </nav>
-    <div class="docs-container">
+    </div>
+</nav>
+    <div class="layout-container">
         <aside class="sidebar">
-            <div class="sidebar-section">
-                <h3>Getting Started</h3>
-                <a href="getting-started.html">Getting Started</a>
-            </div>
-            <div class="sidebar-section">
-                <h3>Core API</h3>
-                <a href="tensor.html">Tensor</a>
-                <a href="nn.html">Dense Layer</a>
-                <a href="sequential.html">Sequential</a>
-            </div>
-            <div class="sidebar-section">
-                <h3>Training</h3>
-                <a href="optim.html" class="active">Optimizers</a>
-                <a href="data.html">Data Loading</a>
-            </div>
-            <div class="sidebar-section">
-                <h3>Advanced</h3>
-                <a href="cuda.html">CUDA Acceleration</a>
-            </div>
-        </aside>
-        <main class="docs-content">
+    <div class="sidebar-section">
+        <ul class="sidebar-nav">
+            <li><a href="getting-started.html">Getting Started</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Core API</div>
+        <ul class="sidebar-nav">
+            <li><a href="tensor.html">Tensor</a></li>
+            <li><a href="nn.html">Dense Layer</a></li>
+            <li><a href="sequential.html">Sequential</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Training</div>
+        <ul class="sidebar-nav">
+            <li><a href="optim.html" class="active">Optimizers</a></li>
+            <li><a href="data.html">Data Loading</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-heading">Advanced</div>
+        <ul class="sidebar-nav">
+            <li><a href="cuda.html">CUDA Acceleration</a></li>
+        </ul>
+    </div>
+</aside>
+        <main class="content">
+
             <div class="breadcrumb">Docs > Training > Optimizers</div>
             <h1>Optimizers</h1>
             
@@ -72,6 +82,7 @@
             <footer class="footer">
                 <p>Built from scratch by Marwan Mahmoud</p>
             </footer>
+        
         </main>
     </div>
 </body>
