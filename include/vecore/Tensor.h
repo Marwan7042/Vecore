@@ -20,6 +20,7 @@ namespace vc{
     public:
         vc::vector<size_t> _shape;
         vc::vector<size_t> _strides;
+        size_t _numel;
         std::shared_ptr<vc::vector<T>> data;
         std::shared_ptr<AutogradContext<T>> ctx;
         
@@ -34,6 +35,7 @@ namespace vc{
 
         // Shape constructor: Allocates memory for a tensor of the given shape and initializes it with zeros
         Tensor(vc::vector<size_t> shape);
+        Tensor(vc::vector<size_t> shape, bool zero_memory, bool allocate_cpu = true);
 
         // Transfers the tensor's memory to the specified device (e.g., "cuda" or "cpu"). Returns a new tensor on that device.
         Tensor<T> to(const std::string& device) const;
@@ -54,7 +56,25 @@ namespace vc{
         Tensor<T> operator*(const Tensor<T>& other) const;
 
         // Applies the Rectified Linear Unit (ReLU) activation function element-wise. Returns the activated tensor.
+        Tensor<T> matmul(const Tensor<T>& other, bool transA = false, bool transB = false) const;
+        Tensor<T> sum(const vc::vector<int>& dims, bool keepdim = false) const;
         Tensor<T> relu() const;
+        Tensor<T> relu_backward(const Tensor<T>& out_grad) const;
+        
+        size_t numel() const {
+            return _numel;
+        }
+
+        static Tensor<T> empty_gpu(const vc::vector<size_t>& shape);
+        
+        void fast_cross_entropy_backward(const Tensor<T>& target, float* d_loss, int* d_correct);
+        
+        // Optimizer hooks
+        void sgd_update(float lr);
+        void zero_grad_data();
+
+        // Reshapes the tensor to a new shape without modifying underlying data.
+        Tensor<T> reshape(const vc::vector<size_t>& new_shape) const;
 
         // Initiates the reverse-mode auto-differentiation (backpropagation) from this tensor, computing gradients for all dependent tensors.
         void backward();
@@ -63,20 +83,45 @@ namespace vc{
         void print() const;
     };
 
+    #include <unordered_map>
+    #include <vector>
+
+    template <typename T>
+    struct CachingAllocator {
+        static std::unordered_map<size_t, std::vector<T*>> free_blocks;
+        static T* allocate(size_t size) {
+            auto& blocks = free_blocks[size];
+            if (!blocks.empty()) {
+                T* ptr = blocks.back();
+                blocks.pop_back();
+                return ptr;
+            }
+            T* ptr;
+            cudaMalloc((void**)&ptr, size * sizeof(T));
+            return ptr;
+        }
+        static void free(T* ptr, size_t size) {
+            free_blocks[size].push_back(ptr);
+        }
+    };
+    template <typename T> 
+    inline std::unordered_map<size_t, std::vector<T*>> CachingAllocator<T>::free_blocks;
+
     template <typename T>
     struct GPUData {
         T* ptr = nullptr;
         size_t size = 0;
         GPUData(size_t s) : size(s) {
-            cudaMalloc((void**)&ptr, size * sizeof(T));
+            ptr = CachingAllocator<T>::allocate(size);
         }
         ~GPUData() {
-            if (ptr) cudaFree(ptr);
+            if (ptr) CachingAllocator<T>::free(ptr, size);
         }
     };
 
     template <typename T>
     struct AutogradContext {
+        static bool grad_mode;
         bool requires_grad = false;
         std::shared_ptr<Tensor<T>> grad = nullptr;
         std::shared_ptr<AutogradNode<T>> creator = nullptr;
@@ -97,9 +142,10 @@ namespace vc{
     template <typename T>
     class AddNode : public AutogradNode<T> {
     private:
-        Tensor<T> a, b, out;
+        Tensor<T> a, b;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
     public:
-        AddNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
+        AddNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out_ctx(out.ctx) {}
 
         vc::vector<Tensor<T>> get_parents() override {
             vc::vector<Tensor<T>> parents(2);
@@ -109,13 +155,50 @@ namespace vc{
         }
 
         void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            auto reduce_grad = [](const Tensor<T>& input, const Tensor<T>& out_grad) {
+                if (input._shape == out_grad._shape) return out_grad;
+                
+                vc::vector<int> dims_to_sum;
+                int rank_diff = (int)out_grad._shape.size() - (int)input._shape.size();
+                for (int i = 0; i < rank_diff; i++) dims_to_sum.push_back(i);
+                
+                for (size_t i = 0; i < input._shape.size(); i++) {
+                    if (input._shape[i] == 1 && out_grad._shape[i + rank_diff] > 1) {
+                        dims_to_sum.push_back(i + rank_diff);
+                    }
+                }
+                
+                if (dims_to_sum.size() > 0) {
+                    return out_grad.sum(dims_to_sum, true).reshape(input._shape);
+                }
+                return out_grad;
+            };
+
             if (a.ctx->requires_grad) {
-                if (!a.ctx->grad) a.ctx->grad = std::make_shared<Tensor<T>>(a._shape);
-                for (size_t i = 0; i < a.ctx->grad->data->size(); i++) (*a.ctx->grad->data)[i] += (*out.ctx->grad->data)[i];
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else {
+                        Tensor<T> zero_grad(a._shape);
+                        a.ctx->grad = std::make_shared<Tensor<T>>(zero_grad);
+                    }
+                }
+                Tensor<T> reduced = reduce_grad(a, *out_ctx_shared->grad);
+                *(a.ctx->grad) = *(a.ctx->grad) + reduced;
             }
             if (b.ctx->requires_grad) {
-                if (!b.ctx->grad) b.ctx->grad = std::make_shared<Tensor<T>>(b._shape);
-                for (size_t i = 0; i < b.ctx->grad->data->size(); i++) (*b.ctx->grad->data)[i] += (*out.ctx->grad->data)[i];
+                Tensor<T> reduced = reduce_grad(b, *out_ctx_shared->grad);
+                if (!b.ctx->grad) {
+                    b.ctx->grad = std::make_shared<Tensor<T>>(reduced);
+                } else {
+                    *(b.ctx->grad) = *(b.ctx->grad) + reduced;
+                }
             }
         }
     };
@@ -125,9 +208,10 @@ namespace vc{
     template <typename T>
     class SubNode : public AutogradNode<T> {
     private:
-        Tensor<T> a, b, out;
+        Tensor<T> a, b;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
     public:
-        SubNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
+        SubNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out_ctx(out.ctx) {}
 
         vc::vector<Tensor<T>> get_parents() override {
             vc::vector<Tensor<T>> parents(2);
@@ -137,13 +221,51 @@ namespace vc{
         }
 
         void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            auto reduce_grad = [](const Tensor<T>& input, const Tensor<T>& out_grad) {
+                if (input._shape == out_grad._shape) return out_grad;
+                
+                vc::vector<int> dims_to_sum;
+                int rank_diff = (int)out_grad._shape.size() - (int)input._shape.size();
+                for (int i = 0; i < rank_diff; i++) dims_to_sum.push_back(i);
+                
+                for (size_t i = 0; i < input._shape.size(); i++) {
+                    if (input._shape[i] == 1 && out_grad._shape[i + rank_diff] > 1) {
+                        dims_to_sum.push_back(i + rank_diff);
+                    }
+                }
+                
+                if (dims_to_sum.size() > 0) {
+                    return out_grad.sum(dims_to_sum, true).reshape(input._shape);
+                }
+                return out_grad;
+            };
+
             if (a.ctx->requires_grad) {
-                if (!a.ctx->grad) a.ctx->grad = std::make_shared<Tensor<T>>(a._shape);
-                for (size_t i = 0; i < a.ctx->grad->data->size(); i++) (*a.ctx->grad->data)[i] += (*out.ctx->grad->data)[i];
+                Tensor<T> reduced = reduce_grad(a, *out_ctx_shared->grad);
+                if (!a.ctx->grad) {
+                    a.ctx->grad = std::make_shared<Tensor<T>>(reduced);
+                } else {
+                    *(a.ctx->grad) = *(a.ctx->grad) + reduced;
+                }
             }
             if (b.ctx->requires_grad) {
-                if (!b.ctx->grad) b.ctx->grad = std::make_shared<Tensor<T>>(b._shape);
-                for (size_t i = 0; i < b.ctx->grad->data->size(); i++) (*b.ctx->grad->data)[i] -= (*out.ctx->grad->data)[i];
+                if (!b.ctx->grad) {
+                    if (b.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(b._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        b.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else {
+                        Tensor<T> zero_grad(b._shape);
+                        b.ctx->grad = std::make_shared<Tensor<T>>(zero_grad);
+                    }
+                }
+                Tensor<T> reduced = reduce_grad(b, *out_ctx_shared->grad);
+                // Subtraction flips the gradient sign for the right operand
+                for (size_t i = 0; i < b.ctx->grad->numel(); i++) (*b.ctx->grad->data)[i] -= (*reduced.data)[i];
             }
         }
     };
@@ -153,9 +275,10 @@ namespace vc{
     template <typename T>
     class MulNode : public AutogradNode<T> {
     private:
-        Tensor<T> a, b, out;
+        Tensor<T> a, b;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
     public:
-        MulNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
+        MulNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out_ctx(out.ctx) {}
 
         vc::vector<Tensor<T>> get_parents() override {
             vc::vector<Tensor<T>> parents(2);
@@ -165,15 +288,23 @@ namespace vc{
         }
 
         void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
             if (a.ctx->requires_grad) {
-                if (!a.ctx->grad) a.ctx->grad = std::make_shared<Tensor<T>>(a._shape);
-                Tensor<T> a_grad_update = *(out.ctx->grad) * b.transpose();
-                *(a.ctx->grad) = *(a.ctx->grad) + a_grad_update;
+                Tensor<T> a_grad_update = *(out_ctx_shared->grad) * b.transpose();
+                if (!a.ctx->grad) {
+                    a.ctx->grad = std::make_shared<Tensor<T>>(a_grad_update);
+                } else {
+                    *(a.ctx->grad) = *(a.ctx->grad) + a_grad_update;
+                }
             }
             if (b.ctx->requires_grad) {
-                if (!b.ctx->grad) b.ctx->grad = std::make_shared<Tensor<T>>(b._shape);
-                Tensor<T> b_grad_update = a.transpose() * *(out.ctx->grad);
-                *(b.ctx->grad) = *(b.ctx->grad) + b_grad_update;
+                Tensor<T> b_grad_update = a.transpose() * *(out_ctx_shared->grad);
+                if (!b.ctx->grad) {
+                    b.ctx->grad = std::make_shared<Tensor<T>>(b_grad_update);
+                } else {
+                    *(b.ctx->grad) = *(b.ctx->grad) + b_grad_update;
+                }
             }
         }
     };
@@ -183,9 +314,10 @@ namespace vc{
     template <typename T>
     class ReLU : public AutogradNode<T> {
     private:
-        Tensor<T> a, out;
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
     public:
-        ReLU(Tensor<T> a, Tensor<T> out) : a(a), out(out) {}
+        ReLU(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
 
         vc::vector<Tensor<T>> get_parents() override {
             vc::vector<Tensor<T>> parents(1);
@@ -194,9 +326,61 @@ namespace vc{
         }
 
         void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
             if (a.ctx->requires_grad) {
-                if (!a.ctx->grad) a.ctx->grad = std::make_shared<Tensor<T>>(a._shape);
-                for (size_t i = 0; i < a.ctx->grad->data->size(); i++) if ((*a.data)[i] > 0) (*a.ctx->grad->data)[i] += (*out.ctx->grad->data)[i];
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else {
+                        Tensor<T> zero_grad(a._shape);
+                        a.ctx->grad = std::make_shared<Tensor<T>>(zero_grad);
+                    }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.relu_backward(*(out_ctx_shared->grad));
+            }
+        }
+    };
+
+    // Graph node representing device transfers (.to("cuda") or .to("cpu"))
+    // Automatically propagates gradients across the PCIe bus during backward pass.
+    template <typename T>
+    class ToNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        ToNode(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
+
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(1);
+            parents[0] = a;
+            return parents;
+        }
+
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else {
+                        Tensor<T> zero_grad(a._shape);
+                        a.ctx->grad = std::make_shared<Tensor<T>>(zero_grad);
+                    }
+                }
+                // Push the gradient back to the source device!
+                Tensor<T> grad_moved = out_ctx_shared->grad->to(a.is_cuda ? "cuda" : "cpu");
+                *(a.ctx->grad) = *(a.ctx->grad) + grad_moved;
             }
         }
     };

@@ -48,7 +48,7 @@ int main() {
             vc::vector<vc::Tensor<float>*> params = layer.parameters();
             for (size_t p = 0; p < params.size(); p++) {
                 vc::Tensor<float>* param = params[p];
-                for (size_t j = 0; j < param->data->size(); j++) {
+                for (size_t j = 0; j < param->numel(); j++) {
                     // Update weights: W = W - lr * dL/dW
                     (*param->data)[j] -= learning_rate * (*param->ctx->grad->data)[j];
                     

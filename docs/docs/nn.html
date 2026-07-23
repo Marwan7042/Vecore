@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Layers - Vecore Docs</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
+        </div>
+    </nav>
+    <div class="docs-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <a href="getting-started.html">Getting Started</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Core API</h3>
+                <a href="tensor.html">Tensor</a>
+                <a href="nn.html" class="active">Dense Layer</a>
+                <a href="sequential.html">Sequential</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Training</h3>
+                <a href="optim.html">Optimizers</a>
+                <a href="data.html">Data Loading</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Advanced</h3>
+                <a href="cuda.html">CUDA Acceleration</a>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <div class="breadcrumb">Docs > Core API > Dense Layer</div>
+            <h1>Neural Network Layers</h1>
+            
+            <div class="api-card">
+                <h2><code><span class="kw">vc::nn::</span>Dense&lt;T&gt;</code> — Fully Connected Layer</h2>
+                <p>Forward: Y = (X × W) + B, optional ReLU</p>
+                
+                <h3>Constructor</h3>
+                <pre><code><span class="fn">Dense</span>(<span class="ty">size_t</span> inputs, <span class="ty">size_t</span> neurons, <span class="ty">std::string</span> activation = <span class="st">"none"</span>)</code></pre>
+                <ul>
+                    <li>Xavier/Glorot uniform initialization: limit = sqrt(6 / (in + out))</li>
+                    <li>Bias initialized to zero</li>
+                    <li>Both weight and bias have <code>requires_grad = true</code></li>
+                </ul>
+                
+                <h3>Methods</h3>
+                <ul>
+                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; x)</code> — forward pass</li>
+                    <li><code><span class="ty">vc::vector&lt;Tensor&lt;T&gt;*&gt;</span> <span class="fn">parameters</span>()</code> — returns <code>[&amp;weight, &amp;bias]</code></li>
+                    <li><code><span class="ty">Dense&lt;T&gt;</span> <span class="fn">to</span>(<span class="kw">const</span> <span class="ty">std::string</span>&amp; device)</code> — device transfer</li>
+                </ul>
+            </div>
+
+            <h2>Loss Functions</h2>
+            
+            <div class="api-card">
+                <h3><code><span class="kw">vc::nn::</span>MSELoss&lt;T&gt;</code> — Mean Squared Error</h3>
+                <ul>
+                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; predictions, <span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; targets)</code></li>
+                    <li>Formula: loss = mean((pred - target)²)</li>
+                    <li>Gradient: 2(pred - target)</li>
+                </ul>
+            </div>
+
+            <div class="api-card">
+                <h3><code><span class="kw">vc::nn::</span>CrossEntropyLoss&lt;T&gt;</code> — Cross Entropy with Softmax</h3>
+                <ul>
+                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; logits, <span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; targets)</code></li>
+                    <li>Numerically stable softmax + negative log likelihood</li>
+                    <li>Gradient: (softmax(logits) - targets) / batch_size</li>
+                </ul>
+            </div>
+            
+            <div class="callout-warning">
+                <strong>Warning:</strong> For CrossEntropyLoss, the <code>targets</code> tensor must be one-hot encoded.
+            </div>
+
+            <h2>Example: Complete Workflow</h2>
+            <pre><code><span class="cm">// 1. Create layers and data</span>
+<span class="ty">vc::nn::Dense&lt;float&gt;</span> <span class="fn">layer1</span>(<span class="nu">784</span>, <span class="nu">128</span>, <span class="st">"relu"</span>);
+<span class="ty">vc::nn::Dense&lt;float&gt;</span> <span class="fn">layer2</span>(<span class="nu">128</span>, <span class="nu">10</span>, <span class="st">"none"</span>);
+<span class="ty">vc::nn::CrossEntropyLoss&lt;float&gt;</span> criterion;
+<span class="ty">vc::optim::SGD&lt;float&gt;</span> <span class="fn">optimizer</span>({layer1.parameters(), layer2.parameters()}, <span class="nu">0.01</span>);
+
+<span class="cm">// 2. Forward pass</span>
+<span class="kw">auto</span> hidden = <span class="fn">layer1</span>(inputs);
+<span class="kw">auto</span> logits = <span class="fn">layer2</span>(hidden);
+
+<span class="cm">// 3. Compute loss</span>
+<span class="kw">auto</span> loss = <span class="fn">criterion</span>(logits, targets);
+
+<span class="cm">// 4. Backward pass</span>
+loss.<span class="fn">backward</span>();
+
+<span class="cm">// 5. Optimizer step</span>
+optimizer.<span class="fn">step</span>();
+optimizer.<span class="fn">zero_grad</span>();</code></pre>
+
+            <footer class="footer">
+                <p>Built from scratch by Marwan Mahmoud</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

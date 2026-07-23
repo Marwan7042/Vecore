@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUDA Acceleration - Vecore Docs</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">Vecore</div>
+        <div class="navbar-links">
+            <a href="index.html">Docs</a>
+            <a href="https://github.com/marwan/vecore">GitHub</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <ul>
+                    <li><a href="intro.html">Introduction</a></li>
+                    <li><a href="install.html">Installation</a></li>
+                    <li><a href="quickstart.html">Quickstart</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Core Concepts</h3>
+                <ul>
+                    <li><a href="tensor.html">Tensor API</a></li>
+                    <li><a href="autograd.html">Autograd</a></li>
+                    <li><a href="nn.html">Neural Networks</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Advanced</h3>
+                <ul>
+                    <li><a href="export.html">Model Exporting</a></li>
+                    <li><a href="cuda.html" class="active">CUDA Acceleration</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="breadcrumb">Docs &gt; Advanced &gt; CUDA Acceleration</div>
+            
+            <h1>CUDA Acceleration</h1>
+            <p class="subtitle">How Vecore leverages your NVIDIA GPU for blazing-fast deep learning.</p>
+
+            <section>
+                <h2>Overview</h2>
+                <p>Vecore is designed from the ground up to run on NVIDIA GPUs. Every operation — from matrix multiplication to gradient descent — has a hand-written CUDA kernel optimized for throughput.</p>
+            </section>
+
+            <section>
+                <h2>Device Management</h2>
+                <ul>
+                    <li><code>.to("cuda")</code> transfers tensors and models to GPU</li>
+                    <li><code>.to("cpu")</code> brings them back</li>
+                </ul>
+                <div class="code-block">
+                    <pre><code class="language-cpp">Tensor a = Tensor::randn({1024, 1024});
+a.to("cuda"); // Transfer to GPU
+
+// Operations happen on the current device
+Tensor b = Tensor::randn({1024, 1024}).to("cuda");
+Tensor c = a.matmul(b);
+
+c.to("cpu"); // Transfer back to host memory</code></pre>
+                </div>
+            </section>
+
+            <section>
+                <h2>cuBLAS Integration</h2>
+                <ul>
+                    <li>Matrix multiplication uses NVIDIA cuBLAS</li>
+                    <li>TF32 Tensor Core math enabled via <code>cublasSetMathMode(handle, CUBLAS_TF32_TENSOR_OP_MATH)</code></li>
+                    <li>Static thread-local cuBLAS handle eliminates initialization overhead</li>
+                </ul>
+                <div class="callout tip">
+                    <strong>Tip:</strong> TF32 provides near-FP32 accuracy with 8x the throughput on Ampere+ GPUs.
+                </div>
+            </section>
+
+            <section>
+                <h2>Custom CUDA Kernels</h2>
+                <p>Vecore implements custom optimized kernels for various operations. Below are some key kernels and their optimization techniques:</p>
+                <div class="api-cards">
+                    <div class="card">
+                        <h3><code>cuda_relu_kernel</code></h3>
+                        <p>Element-wise ReLU activation.</p>
+                        <ul>
+                            <li>256 threads per block</li>
+                            <li>Uses <code>cudaMemsetAsync</code> for zero initialization</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>cuda_relu_backward_kernel</code></h3>
+                        <p>ReLU gradient computation.</p>
+                        <ul>
+                            <li>Zero-copy: only passes gradient where input &gt; 0</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>cuda_broadcast_add_kernel</code></h3>
+                        <p>Broadcasted element-wise addition.</p>
+                        <ul>
+                            <li>Handles shape broadcasting across arbitrary dimensions</li>
+                            <li>Flattened index computation with stride arrays</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>cuda_sgd_kernel</code></h3>
+                        <p>In-place SGD parameter update.</p>
+                        <ul>
+                            <li><code>W -= lr * grad</code>, runs asynchronously</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>cuda_cross_entropy_metrics_kernel</code></h3>
+                        <p>Fused loss + accuracy + gradient.</p>
+                        <ul>
+                            <li>Shared memory block reduction (eliminates atomicAdd contention)</li>
+                            <li>Computes loss, accuracy, and backprop gradient in a single kernel</li>
+                            <li>Reduced atomic collisions by 99.6%</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>cuda_sum_kernel_atomic</code></h3>
+                        <p>Parallel reduction for sum operations.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>Memory Management</h2>
+                <div class="api-cards">
+                    <div class="card">
+                        <h3><code>CachingAllocator</code> — GPU memory pool</h3>
+                        <ul>
+                            <li>Caches freed CUDA allocations by size</li>
+                            <li>Reuses memory blocks to avoid <code>cudaMalloc</code> latency</li>
+                            <li><code>allocate(size)</code> checks pool before calling <code>cudaMalloc</code></li>
+                            <li><code>free(ptr, size)</code> returns to pool instead of <code>cudaFree</code></li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h3><code>GPUData&lt;T&gt;</code> — RAII wrapper</h3>
+                        <ul>
+                            <li>Constructor allocates via <code>CachingAllocator</code></li>
+                            <li>Destructor returns to pool</li>
+                            <li>Prevents memory leaks</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>Async Pipeline (Advanced)</h2>
+                <p><code>Sequential::fit</code> utilizes a double-buffered pipeline to hide data transfer latency:</p>
+                <ul>
+                    <li>Pinned host memory via <code>cudaHostRegister</code></li>
+                    <li>Separate CUDA stream for data transfers</li>
+                    <li><code>cudaEvents</code> for synchronization between compute and copy streams</li>
+                    <li>Double buffering: while GPU computes batch N, CPU transfers batch N+1</li>
+                    <li>Single <code>cudaMemcpy</code> sync per epoch for metrics</li>
+                </ul>
+                <p><strong>Pipeline Diagram:</strong></p>
+                <div class="code-block">
+                    <pre><code class="language-text">Time →
+Stream 0 (Compute): [Forward B0][Backward B0]      [Forward B1][Backward B1]
+Stream 1 (Copy):                  [Copy B1 to GPU]                [Copy B2 to GPU]</code></pre>
+                </div>
+            </section>
+
+            <section>
+                <h2>Performance Tips</h2>
+                <ol>
+                    <li>Set <code>cudaDeviceScheduleBlockingSync</code> to prevent CPU core spinning</li>
+                    <li>Use batch sizes that are multiples of 256 for optimal warp utilization</li>
+                    <li>Prefer <code>.to("cuda")</code> once over repeated transfers</li>
+                    <li>The <code>CachingAllocator</code> makes temporary tensor creation nearly free</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Build Configuration</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Requirement</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Dependencies</td>
+                            <td>CUDA Toolkit, cuBLAS</td>
+                        </tr>
+                        <tr>
+                            <td>CMake flags</td>
+                            <td><code>-O3</code> for both CXX and CUDA</td>
+                        </tr>
+                        <tr>
+                            <td>Architecture</td>
+                            <td>Set <code>CMAKE_CUDA_ARCHITECTURES</code> to your GPU's compute capability</td>
+                        </tr>
+                        <tr>
+                            <td>Supported</td>
+                            <td>sm_70 (Volta), sm_75 (Turing), sm_80 (Ampere), sm_89 (Ada), sm_100 (Blackwell)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout warning">
+                    <strong>Warning:</strong> Always compile CUDA code with <code>-O3</code>. Without it, the nvcc compiler disables register optimization and loop unrolling, causing up to 10x slowdowns as variables spill to global memory.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <p>Built from scratch by Marwan Mahmoud</p>
+    </footer>
+</body>
+</html>

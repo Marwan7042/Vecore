@@ -1,5 +1,8 @@
 build/
 mnist_png/
 .vscode/
+.agents/
 *.o
 *.out
+datasets/
+graphify-out

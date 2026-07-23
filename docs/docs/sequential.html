@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequential - Vecore Docs</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
+        </div>
+    </nav>
+    <div class="docs-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <a href="getting-started.html">Getting Started</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Core API</h3>
+                <a href="tensor.html">Tensor</a>
+                <a href="nn.html">Dense Layer</a>
+                <a href="sequential.html" class="active">Sequential</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Training</h3>
+                <a href="optim.html">Optimizers</a>
+                <a href="data.html">Data Loading</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Advanced</h3>
+                <a href="cuda.html">CUDA Acceleration</a>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <div class="breadcrumb">Docs > Core API > Sequential</div>
+            <h1>Sequential — The Model Container</h1>
+            
+            <p><strong>Overview:</strong> High-level container that chains Dense layers and provides a complete training pipeline with async GPU execution.</p>
+            
+            <div class="api-card">
+                <h2>Constructor</h2>
+                <pre><code><span class="fn">Sequential</span>(<span class="ty">std::initializer_list&lt;vc::nn::Dense&lt;float&gt;&gt;</span> layers)</code></pre>
+                <p>Example:</p>
+                <pre><code><span class="ty">Sequential</span> <span class="fn">model</span>({ <span class="ty">Dense</span>(<span class="nu">784</span>, <span class="nu">2048</span>, <span class="st">"relu"</span>), <span class="ty">Dense</span>(<span class="nu">2048</span>, <span class="nu">10</span>, <span class="st">"none"</span>) });</code></pre>
+            </div>
+            
+            <div class="api-card">
+                <h2>Methods</h2>
+                <ul>
+                    <li><code><span class="ty">Sequential&amp;</span> <span class="fn">to</span>(<span class="kw">const</span> <span class="ty">std::string&amp;</span> device)</code> — transfers all layers</li>
+                    <li><code><span class="ty">Tensor&lt;float&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;float&gt;&amp;</span> x)</code> — sequential forward pass</li>
+                    <li><code><span class="ty">vc::vector&lt;Tensor&lt;float&gt;*&gt;</span> <span class="fn">parameters</span>()</code> — all parameters across all layers</li>
+                    <li><code><span class="kw">void</span> <span class="fn">save</span>(<span class="kw">const</span> <span class="ty">std::string&amp;</span> filepath)</code> — exports weights as JSON</li>
+                </ul>
+                
+                <h3>The Main Training Method</h3>
+                <pre><code><span class="kw">void</span> <span class="fn">fit</span>(<span class="ty">InMemoryDataset&amp;</span> dataset, <span class="ty">int</span> epochs, <span class="ty">float</span> lr, <span class="ty">int</span> batch_size)</code></pre>
+                <p>This method implements an async GPU pipeline:</p>
+                <ol>
+                    <li>Pre-packs dataset into contiguous pinned memory</li>
+                    <li>Creates CUDA streams for double-buffered transfers</li>
+                    <li>Overlaps data transfer with GPU compute</li>
+                    <li>Uses fused cross-entropy kernel on GPU</li>
+                    <li>Synchronizes once per epoch</li>
+                </ol>
+            </div>
+            
+            <div class="api-card">
+                <h2>Training Pipeline Diagram</h2>
+                <pre>
+[Pinned Memory]       [CUDA Stream 1]       [CUDA Stream 2]
+    Batch N   ---H2D---> Transfer N 
+                            |
+    Batch N+1            Compute N   ---H2D---> Transfer N+1
+                                                   |
+    Batch N+2                                   Compute N+1
+                </pre>
+            </div>
+
+            <h2>Full Training Example</h2>
+            <pre><code><span class="cm">// Load dataset</span>
+<span class="ty">MNISTDataset</span> <span class="fn">train_dataset</span>(<span class="st">"data/train-images.idx3-ubyte"</span>, <span class="st">"data/train-labels.idx1-ubyte"</span>);
+
+<span class="cm">// Define model</span>
+<span class="ty">Sequential</span> <span class="fn">model</span>({
+    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">784</span>, <span class="nu">512</span>, <span class="st">"relu"</span>),
+    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">512</span>, <span class="nu">256</span>, <span class="st">"relu"</span>),
+    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">256</span>, <span class="nu">10</span>, <span class="st">"none"</span>)
+});
+
+<span class="cm">// Move to GPU</span>
+model.<span class="fn">to</span>(<span class="st">"cuda"</span>);
+
+<span class="cm">// Train</span>
+model.<span class="fn">fit</span>(train_dataset, <span class="nu">10</span>, <span class="nu">0.01</span>, <span class="nu">128</span>);
+
+<span class="cm">// Save model</span>
+model.<span class="fn">save</span>(<span class="st">"mnist_model.json"</span>);</code></pre>
+
+            <footer class="footer">
+                <p>Built from scratch by Marwan Mahmoud</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

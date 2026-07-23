@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Loading - Vecore Docs</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
+        </div>
+    </nav>
+    <div class="docs-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <a href="getting-started.html">Getting Started</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Core API</h3>
+                <a href="tensor.html">Tensor</a>
+                <a href="nn.html">Dense Layer</a>
+                <a href="sequential.html">Sequential</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Training</h3>
+                <a href="optim.html">Optimizers</a>
+                <a href="data.html" class="active">Data Loading</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Advanced</h3>
+                <a href="cuda.html">CUDA Acceleration</a>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <div class="breadcrumb">Docs > Training > Data Loading</div>
+            <h1>Data Loading</h1>
+            
+            <div class="api-card">
+                <h2><code><span class="kw">struct</span> Sample</code> — The data unit</h2>
+                <ul>
+                    <li><code>image</code> (<span class="ty">Tensor</span>)</li>
+                    <li><code>target</code> (<span class="ty">Tensor</span>)</li>
+                    <li><code>filepath</code> (<span class="ty">string</span>)</li>
+                    <li><code>label</code> (<span class="ty">int</span>)</li>
+                </ul>
+            </div>
+            
+            <div class="api-card">
+                <h2><code><span class="kw">vc::data::</span>Dataset</code> — Abstract base class</h2>
+                <p>Pure virtual methods:</p>
+                <ul>
+                    <li><code><span class="ty">size_t</span> <span class="fn">len</span>()</code></li>
+                    <li><code><span class="ty">Sample</span> <span class="fn">get_item</span>(<span class="ty">size_t</span> index)</code></li>
+                </ul>
+            </div>
+            
+            <div class="api-card">
+                <h2><code><span class="kw">vc::data::</span>InMemoryDataset</code> — RAM-resident dataset</h2>
+                <p>Designed for subclassing.</p>
+                <ul>
+                    <li>Holds <code><span class="ty">std::vector&lt;Sample&gt;</span> data</code></li>
+                    <li>Methods: <code>len()</code>, <code>get_item()</code>, <code>get_raw_data()</code></li>
+                </ul>
+            </div>
+
+            <h2>Custom Dataset Example (MNIST)</h2>
+            <pre><code><span class="kw">class</span> <span class="ty">MNISTDataset</span> : <span class="kw">public</span> <span class="ty">vc::data::InMemoryDataset</span> {
+<span class="kw">public</span>:
+    <span class="fn">MNISTDataset</span>(<span class="kw">const</span> <span class="ty">std::string</span>&amp; img_path, <span class="kw">const</span> <span class="ty">std::string</span>&amp; lbl_path) {
+        <span class="cm">// Load logic here</span>
+        <span class="fn">load_mnist</span>(img_path, lbl_path);
+    }
+    
+<span class="kw">private</span>:
+    <span class="kw">void</span> <span class="fn">load_mnist</span>(<span class="kw">const</span> <span class="ty">std::string</span>&amp; img_path, <span class="kw">const</span> <span class="ty">std::string</span>&amp; lbl_path) {
+        <span class="cm">// 1. Open files</span>
+        <span class="cm">// 2. Parse headers</span>
+        <span class="cm">// 3. Multi-threaded parsing into `data` vector</span>
+        <span class="cm">// ...</span>
+    }
+};</code></pre>
+
+            <footer class="footer">
+                <p>Built from scratch by Marwan Mahmoud</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

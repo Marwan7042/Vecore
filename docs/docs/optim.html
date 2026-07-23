@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizers - Vecore Docs</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../index.html" class="logo">Vecore</a>
+        <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="../index.html#demo">Demo</a>
+            <a href="getting-started.html" class="active">Docs</a>
+            <a href="#">GitHub</a>
+        </div>
+    </nav>
+    <div class="docs-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Getting Started</h3>
+                <a href="getting-started.html">Getting Started</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Core API</h3>
+                <a href="tensor.html">Tensor</a>
+                <a href="nn.html">Dense Layer</a>
+                <a href="sequential.html">Sequential</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Training</h3>
+                <a href="optim.html" class="active">Optimizers</a>
+                <a href="data.html">Data Loading</a>
+            </div>
+            <div class="sidebar-section">
+                <h3>Advanced</h3>
+                <a href="cuda.html">CUDA Acceleration</a>
+            </div>
+        </aside>
+        <main class="docs-content">
+            <div class="breadcrumb">Docs > Training > Optimizers</div>
+            <h1>Optimizers</h1>
+            
+            <div class="api-card">
+                <h2><code><span class="kw">vc::optim::</span>SGD&lt;T&gt;</code> — Stochastic Gradient Descent</h2>
+                
+                <h3>Constructor</h3>
+                <pre><code><span class="fn">SGD</span>(<span class="ty">vc::vector&lt;Tensor&lt;T&gt;*&gt;</span> params, <span class="ty">float</span> learning_rate)</code></pre>
+                
+                <h3>Methods</h3>
+                <ul>
+                    <li><code><span class="kw">void</span> <span class="fn">zero_grad</span>()</code> — resets all gradients to zero</li>
+                    <li><code><span class="kw">void</span> <span class="fn">step</span>()</code> — applies W = W - lr * grad (uses cuda_sgd_kernel on GPU)</li>
+                </ul>
+            </div>
+            
+            <div class="callout-tip">
+                <strong>Tip:</strong> Always call <code>zero_grad()</code> before <code>backward()</code>. Gradients accumulate by default — this is intentional for gradient accumulation techniques, but forgetting to zero them is the #1 training bug.
+            </div>
+
+            <h2>The Standard Training Loop Pattern</h2>
+            <pre><code><span class="kw">for</span> (<span class="ty">int</span> epoch = <span class="nu">0</span>; epoch &lt; epochs; epoch++) {
+    optimizer.<span class="fn">zero_grad</span>();   <span class="cm">// 1. Clear gradients</span>
+    <span class="kw">auto</span> output = <span class="fn">model</span>(x);  <span class="cm">// 2. Forward pass</span>
+    <span class="kw">auto</span> loss = <span class="fn">criterion</span>(output, target); <span class="cm">// 3. Compute loss</span>
+    loss.<span class="fn">backward</span>();         <span class="cm">// 4. Backward pass</span>
+    optimizer.<span class="fn">step</span>();        <span class="cm">// 5. Update weights</span>
+}</code></pre>
+
+            <footer class="footer">
+                <p>Built from scratch by Marwan Mahmoud</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

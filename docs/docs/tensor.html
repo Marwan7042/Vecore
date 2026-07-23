@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vc::Tensor&lt;T&gt; API Reference - Vecore Documentation</title>
+    <link rel="stylesheet" href="../assets/docs.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="layout">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <span class="logo">Vecore</span>
+            </div>
+            <div class="navbar-links">
+                <a href="#">GitHub</a>
+                <a href="#">Community</a>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <div class="nav-group">
+                        <div class="nav-group-title">Getting Started</div>
+                        <a href="installation.html" class="nav-link">Installation</a>
+                        <a href="quickstart.html" class="nav-link">Quickstart</a>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-title">Core API</div>
+                        <a href="tensor.html" class="nav-link active">Tensor</a>
+                        <a href="dense.html" class="nav-link">Dense Layer</a>
+                        <a href="sequential.html" class="nav-link">Sequential</a>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-title">Training</div>
+                        <a href="optimizers.html" class="nav-link">Optimizers</a>
+                        <a href="dataloading.html" class="nav-link">Data Loading</a>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-title">Advanced</div>
+                        <a href="cuda.html" class="nav-link">CUDA Acceleration</a>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <div class="breadcrumb">
+                    <a href="../index.html">Docs</a> > <a href="#">Core API</a> > <span>Tensor</span>
+                </div>
+
+                <header class="page-header">
+                    <h1 class="page-title"><span class="code-font"><span class="kw">vc::</span>Tensor&lt;<span class="ty">T</span>&gt;</span> — The Foundation</h1>
+                    <p class="page-subtitle">A GPU-ready, auto-differentiable multidimensional array.</p>
+                </header>
+
+                <section class="content-section" id="overview">
+                    <h2>Overview</h2>
+                    <p>
+                        The <code>Tensor</code> class is the fundamental building block of Vecore. Every piece of data — images, weights, gradients — lives inside a Tensor. It supports:
+                    </p>
+                    <ul>
+                        <li>Arbitrary-dimensional shapes</li>
+                        <li>Automatic CPU ↔ GPU transfers</li>
+                        <li>Built-in automatic differentiation (autograd)</li>
+                        <li>Matrix multiplication via cuBLAS (GPU) or OpenBLAS (CPU)</li>
+                        <li>Broadcasting for element-wise operations</li>
+                    </ul>
+                </section>
+
+                <section class="content-section" id="constructors">
+                    <h2>Constructors</h2>
+                    
+                    <!-- Tensor() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="fn">Tensor</span>()</code>
+                        </div>
+                        <div class="api-description">
+                            <p>Default constructor. Creates an empty tensor with no data and a 0-dimensional shape.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;();</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Tensor(shape) -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="fn">Tensor</span>(<span class="kw">vc::</span><span class="ty">vector</span>&lt;<span class="ty">size_t</span>&gt; shape)</code>
+                        </div>
+                        <div class="api-description">
+                            <p>Creates a zero-initialized tensor of the given shape on the CPU.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="cm">// Create a 2x3 tensor initialized to zeros</span>
+<span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>});</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- empty_gpu() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="kw">static</span> <span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">empty_gpu</span>(<span class="kw">const</span> <span class="kw">vc::</span><span class="ty">vector</span>&lt;<span class="ty">size_t</span>&gt;&amp; shape)</code>
+                        </div>
+                        <div class="api-description">
+                            <p>Factory method for creating an uninitialized GPU tensor directly, avoiding CPU allocation.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;<span class="op">::</span><span class="fn">empty_gpu</span>({<span class="nu">128</span>, <span class="nu">128</span>});</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section" id="core-methods">
+                    <h2>Core Methods</h2>
+
+                    <!-- to() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">to</span>(<span class="kw">const</span> <span class="kw">std::</span><span class="ty">string</span>&amp; device) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Transfers the tensor between "cpu" and "cuda". If the tensor is already on the specified device, it returns a view of itself.</p>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>device</code></td><td><code>const std::string&</code></td><td>The target device, either <code>"cpu"</code> or <code>"cuda"</code>.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - A tensor on the specified device.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> cpu_tensor <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">4</span>, <span class="nu">4</span>});
+<span class="ty">auto</span> gpu_tensor <span class="op">=</span> cpu_tensor.<span class="fn">to</span>(<span class="st">"cuda"</span>);</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- operator+ -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="kw">operator+</span>(<span class="kw">const</span> <span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt;&amp; other) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Element-wise addition with broadcasting support. Creates an <code>AddNode</code> in the autograd computation graph.</p>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>other</code></td><td><code>const Tensor&lt;T&gt;&</code></td><td>The tensor to add.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Result of element-wise addition.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> a <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">2</span>});
+<span class="ty">auto</span> b <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">1</span>, <span class="nu">2</span>});
+<span class="ty">auto</span> c <span class="op">=</span> a <span class="op">+</span> b; <span class="cm">// b is broadcasted to {2, 2}</span></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- operator- -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="kw">operator-</span>(<span class="kw">const</span> <span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt;&amp; other) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Element-wise subtraction with broadcasting. Creates a <code>SubNode</code> in the autograd graph.</p>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>other</code></td><td><code>const Tensor&lt;T&gt;&</code></td><td>The tensor to subtract.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Result of element-wise subtraction.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> c <span class="op">=</span> a <span class="op">-</span> b;</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- operator* -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="kw">operator*</span>(<span class="kw">const</span> <span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt;&amp; other) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Performs matrix multiplication. Uses cuBLAS on GPU and OpenBLAS on CPU. Creates a <code>MulNode</code> in the autograd graph.</p>
+                            <div class="callout callout-tip">
+                                <strong>Tip:</strong> This is matrix multiplication, not element-wise multiply. Vecore follows the same convention as PyTorch's <code>@</code> operator.
+                            </div>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>other</code></td><td><code>const Tensor&lt;T&gt;&</code></td><td>The tensor to multiply with.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - The matrix multiplication product.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> A <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>});
+<span class="ty">auto</span> B <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">3</span>, <span class="nu">4</span>});
+<span class="ty">auto</span> C <span class="op">=</span> A <span class="op">*</span> B; <span class="cm">// Shape {2, 4}</span></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- transpose() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">transpose</span>() <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Returns a view with swapped last two dimensions. This is a zero-copy operation that modifies strides.</p>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Transposed view of the tensor.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>});
+<span class="ty">auto</span> tt <span class="op">=</span> t.<span class="fn">transpose</span>(); <span class="cm">// Shape {3, 2}</span></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- relu() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">relu</span>() <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Applies element-wise Rectified Linear Unit (ReLU) activation: <code>max(0, x)</code>.</p>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Activated tensor.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> activated <span class="op">=</span> t.<span class="fn">relu</span>();</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- sum() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">sum</span>(<span class="kw">const</span> <span class="kw">vc::</span><span class="ty">vector</span>&lt;<span class="ty">int</span>&gt;&amp; dims, <span class="ty">bool</span> keepdim <span class="op">=</span> <span class="kw">false</span>) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Performs sum reduction along specified dimensions.</p>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>dims</code></td><td><code>const vc::vector&lt;int&gt;&</code></td><td>Dimensions to reduce.</td></tr>
+                                <tr><td><code>keepdim</code></td><td><code>bool</code></td><td>Whether to retain reduced dimensions with size 1.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Reduced tensor.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>});
+<span class="ty">auto</span> s <span class="op">=</span> t.<span class="fn">sum</span>({<span class="nu">1</span>}, <span class="kw">false</span>); <span class="cm">// Shape {2}</span></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- reshape() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">Tensor</span>&lt;<span class="ty">T</span>&gt; <span class="fn">reshape</span>(<span class="kw">const</span> <span class="kw">vc::</span><span class="ty">vector</span>&lt;<span class="ty">size_t</span>&gt;&amp; new_shape) <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Returns a tensor with a different shape sharing the same underlying data buffer. Number of elements must match.</p>
+                        </div>
+                        <div class="api-parameters">
+                            <table>
+                                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                                <tr><td><code>new_shape</code></td><td><code>const vc::vector&lt;size_t&gt;&</code></td><td>The desired shape.</td></tr>
+                            </table>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>Tensor&lt;T&gt;</code> - Reshaped tensor view.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>});
+<span class="ty">auto</span> flat <span class="op">=</span> t.<span class="fn">reshape</span>({<span class="nu">6</span>});</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- numel() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">size_t</span> <span class="fn">numel</span>() <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Returns the total number of elements in the tensor. This is a cached <code>O(1)</code> operation.</p>
+                        </div>
+                        <div class="api-return">
+                            <p><strong>Returns:</strong> <code>size_t</code> - Total element count.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code><span class="ty">auto</span> t <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>});
+<span class="ty">size_t</span> n <span class="op">=</span> t.<span class="fn">numel</span>(); <span class="cm">// Returns 24</span></code></pre>
+                        </div>
+                    </div>
+
+                    <!-- backward() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">void</span> <span class="fn">backward</span>()</code>
+                        </div>
+                        <div class="api-description">
+                            <p>Triggers reverse-mode automatic differentiation. Performs a topological sort of the computation graph from this tensor to all inputs, propagating gradients. Typically called on the scalar loss tensor.</p>
+                            <p>For each node in the graph, it computes local gradients and accumulates them in the parents' <code>ctx-&gt;grad</code>.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code>loss.<span class="fn">backward</span>();</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- print() -->
+                    <div class="api-card">
+                        <div class="api-signature">
+                            <code><span class="ty">void</span> <span class="fn">print</span>() <span class="kw">const</span></code>
+                        </div>
+                        <div class="api-description">
+                            <p>Prints the tensor's shape, device, and elements to standard output. Useful for debugging.</p>
+                        </div>
+                        <div class="api-example">
+                            <pre><code>t.<span class="fn">print</span>();</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section" id="autograd">
+                    <h2>Autograd System</h2>
+                    <p>
+                        Vecore features a dynamic, reverse-mode automatic differentiation engine. Each differentiable operation dynamically creates a node in the computation graph.
+                    </p>
+                    <ul>
+                        <li><strong>Graph Building:</strong> Nodes such as <code>AddNode</code>, <code>SubNode</code>, <code>MulNode</code>, <code>ReLU</code>, and <code>ToNode</code> record the history of operations.</li>
+                        <li><strong>Backpropagation:</strong> Calling <code>backward()</code> initiates a topological sort of the graph, ensuring every node's gradient is computed exactly once.</li>
+                        <li><strong>Gradient Accumulation:</strong> Computed gradients are accumulated into the respective tensor's <code>ctx-&gt;grad</code> buffer.</li>
+                    </ul>
+                    
+                    <div class="graph-diagram">
+<pre><code>x (input) ──→ MatMul(x, W) ──→ Add(+bias) ──→ ReLU ──→ output
+                  ↑                  ↑
+             W (weight)             bias
+</code></pre>
+                    </div>
+                </section>
+
+                <section class="content-section" id="gpu-memory">
+                    <h2>GPU Memory Management</h2>
+                    <p>
+                        Vecore avoids the overhead of frequent <code>cudaMalloc</code> and <code>cudaFree</code> calls by utilizing a custom <strong>CachingAllocator</strong>.
+                    </p>
+                    <ul>
+                        <li><strong>Memory Pooling:</strong> Freed GPU memory is cached and pooled for immediate reuse.</li>
+                        <li><strong>Performance:</strong> Eliminates synchronization stalls associated with raw CUDA allocations.</li>
+                        <li><strong>RAII Semantics:</strong> Managed automatically via the <code>GPUData</code> RAII wrapper, which returns memory to the allocator upon destruction.</li>
+                    </ul>
+                </section>
+
+                <section class="content-section" id="member-variables">
+                    <h2>Member Variables Reference</h2>
+                    <table class="reference-table">
+                        <thead>
+                            <tr>
+                                <th>Member</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>_shape</code></td>
+                                <td><code>vc::vector&lt;size_t&gt;</code></td>
+                                <td>Tensor dimensions</td>
+                            </tr>
+                            <tr>
+                                <td><code>_strides</code></td>
+                                <td><code>vc::vector&lt;size_t&gt;</code></td>
+                                <td>Row-major strides used for indexing</td>
+                            </tr>
+                            <tr>
+                                <td><code>data</code></td>
+                                <td><code>shared_ptr&lt;vc::vector&lt;T&gt;&gt;</code></td>
+                                <td>CPU data buffer</td>
+                            </tr>
+                            <tr>
+                                <td><code>gpu_data</code></td>
+                                <td><code>shared_ptr&lt;GPUData&lt;T&gt;&gt;</code></td>
+                                <td>GPU data handle (managed memory)</td>
+                            </tr>
+                            <tr>
+                                <td><code>ctx</code></td>
+                                <td><code>shared_ptr&lt;AutogradContext&lt;T&gt;&gt;</code></td>
+                                <td>Autograd metadata and gradients</td>
+                            </tr>
+                            <tr>
+                                <td><code>is_cuda</code></td>
+                                <td><code>bool</code></td>
+                                <td>Device location flag</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
