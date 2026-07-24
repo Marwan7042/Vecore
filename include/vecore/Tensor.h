@@ -51,29 +51,36 @@ namespace vc{
 
         // Adds two tensors element-wise and records the operation in the computation graph. Returns the sum tensor.
         Tensor<T> operator+(const Tensor<T>& other) const;
+        
+        // Adds 'other' to this tensor in-place. Does NOT record in the computation graph (used for gradients).
+        Tensor<T>& operator+=(const Tensor<T>& other);
 
         // Subtracts 'other' from this tensor element-wise and records the operation in the computation graph. Returns the difference tensor.
         Tensor<T> operator-(const Tensor<T>& other) const;
+        
+        // Subtracts 'other' from this tensor in-place. Does NOT record in the computation graph.
+        Tensor<T>& operator-=(const Tensor<T>& other);
 
         // Performs matrix multiplication between this tensor and 'other', recording it in the graph. Returns the product tensor.
-        Tensor<T> operator*(const Tensor<T>& other) const;
+        Tensor<T> operator*(const Tensor<T>& other) const { return this->matmul(other); }
 
         // Applies the Rectified Linear Unit (ReLU) activation function element-wise. Returns the activated tensor.
         Tensor<T> matmul(const Tensor<T>& other, bool transA = false, bool transB = false) const;
+        void matmul_accumulate(const Tensor<T>& other, Tensor<T>& accum, bool transA = false, bool transB = false) const;
         Tensor<T> sum(const vc::vector<int>& dims, bool keepdim = false) const;
         Tensor<T> relu() const;
-        Tensor<T> relu_backward(const Tensor<T>& out_grad) const;
+        void relu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         Tensor<T> softmax(int dim = -1) const;
         Tensor<T> sigmoid() const;
-        Tensor<T> sigmoid_backward(const Tensor<T>& out_grad) const;
+        void sigmoid_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         Tensor<T> tanh() const;
-        Tensor<T> tanh_backward(const Tensor<T>& out_grad) const;
+        void tanh_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         Tensor<T> leaky_relu(float alpha = 0.01f) const;
-        Tensor<T> leaky_relu_backward(const Tensor<T>& out_grad, float alpha = 0.01f) const;
+        void leaky_relu_backward(const Tensor<T>& out_grad, Tensor<T>& accum, float alpha = 0.01f) const;
         Tensor<T> gelu() const;
-        Tensor<T> gelu_backward(const Tensor<T>& out_grad) const;
+        void gelu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         Tensor<T> silu() const;
-        Tensor<T> silu_backward(const Tensor<T>& out_grad) const;
+        void silu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         
         size_t numel() const {
             return _numel;
@@ -85,7 +92,9 @@ namespace vc{
         
         // Optimizer hooks
         void sgd_update(float lr);
+        void zero_grad();
         void zero_grad_data();
+        Tensor<T>& zero_();
 
         // Reshapes the tensor to a new shape without modifying underlying data.
         Tensor<T> reshape(const vc::vector<size_t>& new_shape) const;
@@ -107,10 +116,8 @@ namespace vc{
 
     template <typename T>
     struct CachingAllocator {
-        static std::unordered_map<size_t, std::vector<T*>> free_blocks;
-        static std::mutex mtx;
+        static thread_local std::unordered_map<size_t, std::vector<T*>> free_blocks;
         static T* allocate(size_t size) {
-            std::lock_guard<std::mutex> lock(mtx);
             auto& blocks = free_blocks[size];
             if (!blocks.empty()) {
                 T* ptr = blocks.back();
@@ -122,24 +129,27 @@ namespace vc{
             return ptr;
         }
         static void free(T* ptr, size_t size) {
-            std::lock_guard<std::mutex> lock(mtx);
             free_blocks[size].push_back(ptr);
         }
     };
     template <typename T> 
-    inline std::unordered_map<size_t, std::vector<T*>> CachingAllocator<T>::free_blocks;
-    template <typename T> 
-    inline std::mutex CachingAllocator<T>::mtx;
+    inline thread_local std::unordered_map<size_t, std::vector<T*>> CachingAllocator<T>::free_blocks;
 
     template <typename T>
     struct GPUData {
         T* ptr = nullptr;
         size_t size = 0;
+        bool owns_memory = true;
         GPUData(size_t s) : size(s) {
             ptr = CachingAllocator<T>::allocate(size);
         }
-        ~GPUData() {
-            if (ptr) CachingAllocator<T>::free(ptr, size);
+        GPUData(T* p, size_t s, bool owns) : ptr(p), size(s), owns_memory(owns) {}
+        ~GPUData() noexcept {
+            if (ptr && owns_memory) {
+                try {
+                    CachingAllocator<T>::free(ptr, size);
+                } catch(...) {}
+            }
         }
     };
 
@@ -214,14 +224,14 @@ namespace vc{
                     }
                 }
                 Tensor<T> reduced = reduce_grad(a, *out_ctx_shared->grad);
-                *(a.ctx->grad) = *(a.ctx->grad) + reduced;
+                *(a.ctx->grad) += reduced;
             }
             if (b.ctx->requires_grad) {
                 Tensor<T> reduced = reduce_grad(b, *out_ctx_shared->grad);
                 if (!b.ctx->grad) {
                     b.ctx->grad = std::make_shared<Tensor<T>>(reduced);
                 } else {
-                    *(b.ctx->grad) = *(b.ctx->grad) + reduced;
+                    *(b.ctx->grad) += reduced;
                 }
             }
         }
@@ -271,7 +281,7 @@ namespace vc{
                 if (!a.ctx->grad) {
                     a.ctx->grad = std::make_shared<Tensor<T>>(reduced);
                 } else {
-                    *(a.ctx->grad) = *(a.ctx->grad) + reduced;
+                    *(a.ctx->grad) += reduced;
                 }
             }
             if (b.ctx->requires_grad) {
@@ -289,7 +299,7 @@ namespace vc{
                 }
                 Tensor<T> reduced = reduce_grad(b, *out_ctx_shared->grad);
                 // Subtraction flips the gradient sign for the right operand
-                *(b.ctx->grad) = *(b.ctx->grad) - reduced;
+                *(b.ctx->grad) -= reduced;
             }
         }
     };
@@ -300,9 +310,11 @@ namespace vc{
     class MulNode : public AutogradNode<T> {
     private:
         Tensor<T> a, b;
+        bool transA, transB;
         std::weak_ptr<AutogradContext<T>> out_ctx;
     public:
-        MulNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out_ctx(out.ctx) {}
+        MulNode(Tensor<T> a, Tensor<T> b, Tensor<T> out, bool transA = false, bool transB = false) 
+            : a(a), b(b), transA(transA), transB(transB), out_ctx(out.ctx) {}
 
         vc::vector<Tensor<T>> get_parents() override {
             vc::vector<Tensor<T>> parents(2);
@@ -315,19 +327,28 @@ namespace vc{
             auto out_ctx_shared = out_ctx.lock();
             if (!out_ctx_shared || !out_ctx_shared->grad) return;
             if (a.ctx->requires_grad) {
-                Tensor<T> a_grad_update = *(out_ctx_shared->grad) * b.transpose();
                 if (!a.ctx->grad) {
-                    a.ctx->grad = std::make_shared<Tensor<T>>(a_grad_update);
+                    a.ctx->grad = std::make_shared<Tensor<T>>(a.is_cuda ? Tensor<T>::empty_gpu(a._shape).zero_() : Tensor<T>(a._shape, true));
+                }
+                // C = opA(A) * opB(B)
+                // A_grad = C_grad * opB(B)^T
+                // If opA is T, we need A_grad^T, so we actually want to accumulate into A_grad
+                if (!transA) {
+                    (*out_ctx_shared->grad).matmul_accumulate(b, *(a.ctx->grad), false, !transB);
                 } else {
-                    *(a.ctx->grad) = *(a.ctx->grad) + a_grad_update;
+                    b.matmul_accumulate(*(out_ctx_shared->grad), *(a.ctx->grad), transB, true);
                 }
             }
+
             if (b.ctx->requires_grad) {
-                Tensor<T> b_grad_update = a.transpose() * *(out_ctx_shared->grad);
                 if (!b.ctx->grad) {
-                    b.ctx->grad = std::make_shared<Tensor<T>>(b_grad_update);
+                    b.ctx->grad = std::make_shared<Tensor<T>>(b.is_cuda ? Tensor<T>::empty_gpu(b._shape).zero_() : Tensor<T>(b._shape, true));
+                }
+                // B_grad = opA(A)^T * C_grad
+                if (!transB) {
+                    a.matmul_accumulate(*(out_ctx_shared->grad), *(b.ctx->grad), !transA, false);
                 } else {
-                    *(b.ctx->grad) = *(b.ctx->grad) + b_grad_update;
+                    (*out_ctx_shared->grad).matmul_accumulate(a, *(b.ctx->grad), true, transA);
                 }
             }
         }
@@ -365,7 +386,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(zero_grad);
                     }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.relu_backward(*(out_ctx_shared->grad));
+                a.relu_backward(*(out_ctx_shared->grad), *(a.ctx->grad));
             }
         }
     };
@@ -391,7 +412,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
                     } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.sigmoid_backward(*(out_ctx_shared->grad));
+                a.sigmoid_backward(*(out_ctx_shared->grad), *(a.ctx->grad));
             }
         }
     };
@@ -417,7 +438,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
                     } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.tanh_backward(*(out_ctx_shared->grad));
+                a.tanh_backward(*(out_ctx_shared->grad), *(a.ctx->grad));
             }
         }
     };
@@ -444,7 +465,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
                     } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.leaky_relu_backward(*(out_ctx_shared->grad), alpha);
+                a.leaky_relu_backward(*(out_ctx_shared->grad), *(a.ctx->grad), alpha);
             }
         }
     };
@@ -470,7 +491,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
                     } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.gelu_backward(*(out_ctx_shared->grad));
+                a.gelu_backward(*(out_ctx_shared->grad), *(a.ctx->grad));
             }
         }
     };
@@ -496,7 +517,7 @@ namespace vc{
                         a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
                     } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
                 }
-                *(a.ctx->grad) = *(a.ctx->grad) + a.silu_backward(*(out_ctx_shared->grad));
+                a.silu_backward(*(out_ctx_shared->grad), *(a.ctx->grad));
             }
         }
     };
@@ -535,7 +556,7 @@ namespace vc{
                 }
                 // Push the gradient back to the source device!
                 Tensor<T> grad_moved = out_ctx_shared->grad->to(a.is_cuda ? "cuda" : "cpu");
-                *(a.ctx->grad) = *(a.ctx->grad) + grad_moved;
+                *(a.ctx->grad) += grad_moved;
             }
         }
     };

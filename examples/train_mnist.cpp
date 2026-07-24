@@ -119,7 +119,7 @@ int main() {
     std::cout << "\nTraining..." << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    model.fit(dataset, 500, 0.3f, 8192, 5);
+    model.fit(dataset, 150, 0.3f, 8192, 5);
     
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> training_duration = end_time - start_time;

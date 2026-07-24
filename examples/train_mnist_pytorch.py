@@ -1,18 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import os
-from PIL import Image
-import numpy as np
 import time
+import os
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils.data import TensorDataset, DataLoader
 
 class MNISTModel(nn.Module):
     def __init__(self):
         super(MNISTModel, self).__init__()
-        # Matching the architecture exactly: 784 -> 2048 -> 1024 -> 10
+        # Matching the architecture exactly: 784 -> 2048 -> 1024 -> 512 -> 10
         self.layer1 = nn.Linear(784, 2048)
         self.layer2 = nn.Linear(2048, 1024)
-        self.layer3 = nn.Linear(1024, 10)
+        self.layer3 = nn.Linear(1024, 512)
+        self.layer4 = nn.Linear(512, 10)
         self.relu = nn.ReLU()
         
         # Match vecore's Xavier uniform init and zero bias
@@ -24,77 +26,62 @@ class MNISTModel(nn.Module):
     def forward(self, x):
         x = self.relu(self.layer1(x))
         x = self.relu(self.layer2(x))
-        x = self.layer3(x)
+        x = self.relu(self.layer3(x))
+        x = self.layer4(x)
         return x
 
-def load_image(filepath, label):
-    img = Image.open(filepath).convert('L')
-    img = np.array(img, dtype=np.float32) / 255.0
-    img = img.reshape(1, 784)
-    return torch.tensor(img), torch.tensor(label, dtype=torch.long)
-
 def main():
-    print("Scanning MNIST PNG Directory...")
+    print("Loading MNIST Dataset using torchvision...")
     
-    dataset = []
-    # Using path relative to this script or absolute. Assuming running from project root or examples/
-    # Let's try to resolve absolute path dynamically
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    base_dir = os.path.join(current_dir, "../datasets/mnist_png/training/")
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Lambda(lambda x: torch.flatten(x))
+    ])
     
-    # Load 100 images of each digit (1000 total) to train efficiently with batch size 1
-    for label in range(10):
-        dir_path = os.path.join(base_dir, str(label))
-        if not os.path.exists(dir_path):
-            print(f"Directory not found: {dir_path}")
-            continue
-        count = 0
-        for entry in os.listdir(dir_path):
-            if count >= 100:
-                break
-            filepath = os.path.join(dir_path, entry)
-            if os.path.isfile(filepath):
-                dataset.append(load_image(filepath, label))
-                count += 1
-                
-    print(f"Loaded {len(dataset)} actual PNG images into Tensors!")
-    print("Building Deep MLP (784 -> 2048 -> 1024 -> 10) to learn Computer Vision...")
+    # Download dataset if not present
+    train_dataset_raw = torchvision.datasets.MNIST(root='./datasets', train=True, download=True, transform=transform)
+    test_dataset_raw = torchvision.datasets.MNIST(root='./datasets', train=False, download=True, transform=transform)
     
+    # We will load the entire dataset into GPU memory for maximum speed, 
+    # mirroring vecore's `use_pipeline=false` or fast pinned memory transfers.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Transferring Weights to {device}...")
     
+    train_loader_unbatched = DataLoader(train_dataset_raw, batch_size=len(train_dataset_raw), shuffle=False)
+    X_train_all, Y_train_all = next(iter(train_loader_unbatched))
+    
+    X_train_all = X_train_all.to(device)
+    Y_train_all = Y_train_all.to(device)
+    
+    train_dataset = TensorDataset(X_train_all, Y_train_all)
+    batch_size = 8192
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    
     model = MNISTModel().to(device)
     
-    learning_rate = 0.1
+    learning_rate = 0.3
+    epochs = 150
+    patience = 5
     optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
     
-    history_loss = []
-    history_acc = []
-    
+    print("\nTraining...")
     start_time = time.time()
     
-    for epoch in range(151):
+    best_loss = float('inf')
+    epochs_no_improve = 0
+    
+    for epoch in range(epochs):
         epoch_loss = 0.0
         correct = 0
+        total = 0
         
-        for i in range(len(dataset)):
+        for X_batch, Y_batch in train_loader:
             # 1. Forward Pass
-            X_cuda, Y_target = dataset[i]
-            X_cuda = X_cuda.to(device)
-            Y_target = Y_target.unsqueeze(0).to(device) # batch size 1
-            
-            Y_pred = model(X_cuda)
+            Y_pred = model(X_batch)
             
             # 2. Calculate Loss
-            loss = criterion(Y_pred, Y_target)
-            
-            # Check if network guessed right
-            max_idx = torch.argmax(Y_pred, dim=1).item()
-            if max_idx == Y_target.item():
-                correct += 1
-                
-            epoch_loss += loss.item()
+            loss = criterion(Y_pred, Y_batch)
             
             # 3. Zero Gradients
             optimizer.zero_grad()
@@ -105,53 +92,51 @@ def main():
             # 5. Optimizer Step
             optimizer.step()
             
-        avg_loss = epoch_loss / len(dataset)
-        accuracy = correct / len(dataset) * 100.0
+            epoch_loss += loss.item() * X_batch.size(0)
+            
+            max_idx = torch.argmax(Y_pred, dim=1)
+            correct += (max_idx == Y_batch).sum().item()
+            total += X_batch.size(0)
+            
+        avg_loss = epoch_loss / total
+        accuracy = (correct / total) * 100.0
         
-        history_loss.append(avg_loss)
-        history_acc.append(accuracy)
+        print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.6f} | Accuracy: {accuracy:.2f}%")
         
-        print(f"Epoch {epoch} | Loss: {avg_loss:.6f} | Accuracy: {accuracy:.2f}%")
-        
+        # Early stopping logic (matching vecore's implementation)
+        min_delta = 1e-4
+        if avg_loss < best_loss - min_delta:
+            best_loss = avg_loss
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+            
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered at epoch {epoch}. Loss hasn't improved by {min_delta} for {patience} epochs.")
+            break
+            
     end_time = time.time()
-    print(f"\nTraining Time: {end_time - start_time:.2f} seconds")
+    print(f"\n>>> TOTAL TRAINING TIME: {end_time - start_time:.4f} seconds <<<")
     
     # Evaluate on Test Set
     print("\nEvaluating on Unseen Test Images...")
-    test_dataset = []
-    test_dir = os.path.join(current_dir, "../datasets/mnist_png/testing/")
     
-    for label in range(10):
-        dir_path = os.path.join(test_dir, str(label))
-        if not os.path.exists(dir_path):
-            continue
-        for entry in os.listdir(dir_path):
-            filepath = os.path.join(dir_path, entry)
-            if os.path.isfile(filepath):
-                test_dataset.append(load_image(filepath, label))
-                
-    test_correct = 0
-    # Add eval mode to disable dropout etc if we had any, though we don't. Good practice anyway.
+    test_loader_unbatched = DataLoader(test_dataset_raw, batch_size=len(test_dataset_raw), shuffle=False)
+    X_test_all, Y_test_all = next(iter(test_loader_unbatched))
+    
+    X_test_all = X_test_all.to(device)
+    Y_test_all = Y_test_all.to(device)
+    
     model.eval()
-    
-    eval_start_time = time.time()
-    for i in range(len(test_dataset)):
-        X_cuda, Y_target = test_dataset[i]
-        X_cuda = X_cuda.to(device)
-        Y_target = Y_target.unsqueeze(0).to(device)
+    with torch.no_grad():
+        Y_pred = model(X_test_all)
+        max_idx = torch.argmax(Y_pred, dim=1)
+        test_correct = (max_idx == Y_test_all).sum().item()
         
-        with torch.no_grad():
-            Y_pred = model(X_cuda)
-            max_idx = torch.argmax(Y_pred, dim=1).item()
-            if max_idx == Y_target.item():
-                test_correct += 1
-    eval_end_time = time.time()
-                
-    test_accuracy = test_correct / len(test_dataset) * 100.0
+    test_accuracy = (test_correct / len(test_dataset_raw)) * 100.0
     print("=====================================================")
-    print(f" REAL-WORLD TEST ACCURACY: {test_accuracy:.2f}% ({test_correct}/{len(test_dataset)})")
-    print(f" Evaluation Time: {eval_end_time - eval_start_time:.2f} seconds")
+    print(f" REAL-WORLD TEST ACCURACY: {test_accuracy:.2f}% ({test_correct}/{len(test_dataset_raw)})")
     print("=====================================================")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

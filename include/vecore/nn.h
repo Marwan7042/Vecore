@@ -21,8 +21,8 @@ namespace vc {
             // Initialize the Dense layer with random weights and optional activation
             Dense(size_t inputs, size_t neurons, std::string act = "none") : activation(act) {
                 vc::vector<size_t> w_shape(2);
-                w_shape[0] = inputs; 
-                w_shape[1] = neurons;
+                w_shape[0] = neurons; 
+                w_shape[1] = inputs;
                 weight = Tensor<T>(w_shape);
 
                 vc::vector<size_t> b_shape(2);
@@ -49,7 +49,10 @@ namespace vc {
 
             // The Forward Pass for this layer!
             Tensor<T> operator()(const Tensor<T>& x) {
-                Tensor<T> out = (x * weight) + bias;
+                Tensor<T> out = x.matmul(weight, false, true);
+                if (bias._shape.size() > 0) {
+                    out = out + bias;
+                }
                 if (activation == "relu") {
                     return out.relu();
                 } else if (activation == "softmax") {
