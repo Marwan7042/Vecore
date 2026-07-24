@@ -108,16 +108,113 @@ __global__ void cuda_broadcast_add_kernel(const T* A, const T* B, T* C, CudaBroa
 
 template <typename T>
 __global__ void cuda_relu_forward_kernel(const T* A, T* C, size_t total) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= total) return;
-    C[idx] = A[idx] > 0 ? A[idx] : 0;
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < total) {
+        C[i] = A[i] > 0 ? A[i] : 0;
+    }
 }
 
 template <typename T>
+__global__ void cuda_softmax_forward_kernel(const T* in, T* out, size_t batch_size, size_t num_classes) {
+    size_t b = blockIdx.x * blockDim.x + threadIdx.x;
+    if (b < batch_size) {
+        T max_val = in[b * num_classes];
+        for (size_t j = 1; j < num_classes; j++) {
+            if (in[b * num_classes + j] > max_val) max_val = in[b * num_classes + j];
+        }
+        T sum_exp = 0;
+        for (size_t j = 0; j < num_classes; j++) {
+            T exp_val = exp(in[b * num_classes + j] - max_val);
+            out[b * num_classes + j] = exp_val;
+            sum_exp += exp_val;
+        }
+        for (size_t j = 0; j < num_classes; j++) {
+            out[b * num_classes + j] /= sum_exp;
+        }
+    }
+}
+template <typename T>
 __global__ void cuda_relu_backward_kernel(const T* A, const T* out_grad, T* A_grad, size_t total) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= total) return;
-    if (A[idx] > 0) A_grad[idx] += out_grad[idx];
+    if (idx < total && A[idx] > 0) A_grad[idx] += out_grad[idx];
+}
+
+template <typename T>
+__global__ void cuda_sigmoid_forward_kernel(const T* A, T* C, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) C[idx] = 1.0f / (1.0f + expf(-A[idx]));
+}
+template <typename T>
+__global__ void cuda_sigmoid_backward_kernel(const T* A, const T* out_grad, T* A_grad, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T sig = 1.0f / (1.0f + expf(-A[idx]));
+        A_grad[idx] += out_grad[idx] * sig * (1.0f - sig);
+    }
+}
+
+template <typename T>
+__global__ void cuda_tanh_forward_kernel(const T* A, T* C, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) C[idx] = tanhf(A[idx]);
+}
+template <typename T>
+__global__ void cuda_tanh_backward_kernel(const T* A, const T* out_grad, T* A_grad, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T t = tanhf(A[idx]);
+        A_grad[idx] += out_grad[idx] * (1.0f - t * t);
+    }
+}
+
+template <typename T>
+__global__ void cuda_leaky_relu_forward_kernel(const T* A, T* C, float alpha, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) C[idx] = A[idx] > 0 ? A[idx] : A[idx] * alpha;
+}
+template <typename T>
+__global__ void cuda_leaky_relu_backward_kernel(const T* A, const T* out_grad, T* A_grad, float alpha, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) A_grad[idx] += out_grad[idx] * (A[idx] > 0 ? 1.0f : alpha);
+}
+
+template <typename T>
+__global__ void cuda_gelu_forward_kernel(const T* A, T* C, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T x = A[idx];
+        C[idx] = 0.5f * x * (1.0f + tanhf(0.7978845608f * (x + 0.044715f * x * x * x)));
+    }
+}
+template <typename T>
+__global__ void cuda_gelu_backward_kernel(const T* A, const T* out_grad, T* A_grad, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T x = A[idx];
+        T x3 = x * x * x;
+        T t = tanhf(0.7978845608f * (x + 0.044715f * x3));
+        T sech2 = 1.0f - t * t;
+        T grad_val = 0.5f * (1.0f + t) + 0.5f * x * sech2 * (0.7978845608f * (1.0f + 0.134145f * x * x));
+        A_grad[idx] += out_grad[idx] * grad_val;
+    }
+}
+
+template <typename T>
+__global__ void cuda_silu_forward_kernel(const T* A, T* C, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T x = A[idx];
+        C[idx] = x / (1.0f + expf(-x));
+    }
+}
+template <typename T>
+__global__ void cuda_silu_backward_kernel(const T* A, const T* out_grad, T* A_grad, size_t total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        T x = A[idx];
+        T sig = 1.0f / (1.0f + expf(-x));
+        A_grad[idx] += out_grad[idx] * (sig + x * sig * (1.0f - sig));
+    }
 }
 
 template <typename T>
@@ -488,7 +585,45 @@ __global__ void cuda_cross_entropy_metrics_kernel(const float* logits, const flo
         
         return result;
     }
-
+    template <typename T>
+    Tensor<T> Tensor<T>::softmax(int dim) const {
+        Tensor<T> result;
+        size_t batch_size = this->_shape.size() > 1 ? this->_shape[0] : 1;
+        size_t num_classes = this->_shape.size() > 1 ? this->_shape[1] : this->_shape[0];
+        
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256;
+            int blocks = (batch_size + threads - 1) / threads;
+            cuda_softmax_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, batch_size, num_classes);
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t b = 0; b < batch_size; b++) {
+                T max_val = (*this->data)[b * num_classes];
+                for (size_t j = 1; j < num_classes; j++) {
+                    if ((*this->data)[b * num_classes + j] > max_val) max_val = (*this->data)[b * num_classes + j];
+                }
+                T sum_exp = 0.0f;
+                for (size_t j = 0; j < num_classes; j++) {
+                    T exp_val = std::exp((*this->data)[b * num_classes + j] - max_val);
+                    (*result.data)[b * num_classes + j] = exp_val;
+                    sum_exp += exp_val;
+                }
+                for (size_t j = 0; j < num_classes; j++) {
+                    (*result.data)[b * num_classes + j] /= sum_exp;
+                }
+            }
+        }
+        
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) {
+            throw std::runtime_error("Softmax backward is not implemented standalone. Please use CrossEntropyLoss for training.");
+        }
+        
+        return result;
+    }
     template <typename T>
     Tensor<T> Tensor<T>::relu_backward(const Tensor<T>& out_grad) const {
         Tensor<T> result;
@@ -685,6 +820,204 @@ __global__ void cuda_cross_entropy_metrics_kernel(const float* logits, const flo
             this->backward(); // Trigger the full GPU backward pass!
         }
 #endif
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::sigmoid() const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_sigmoid_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) (*result.data)[i] = 1.0f / (1.0f + std::exp(-(*this->data)[i]));
+        }
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) result.ctx->creator = std::make_shared<SigmoidNode<T>>(*this, result);
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::sigmoid_backward(const Tensor<T>& out_grad) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_sigmoid_backward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, out_grad.gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T sig = 1.0f / (1.0f + std::exp(-(*this->data)[i]));
+                (*result.data)[i] = (*out_grad.data)[i] * sig * (1.0f - sig);
+            }
+        }
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::tanh() const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_tanh_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) (*result.data)[i] = std::tanh((*this->data)[i]);
+        }
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) result.ctx->creator = std::make_shared<TanhNode<T>>(*this, result);
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::tanh_backward(const Tensor<T>& out_grad) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_tanh_backward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, out_grad.gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T t = std::tanh((*this->data)[i]);
+                (*result.data)[i] = (*out_grad.data)[i] * (1.0f - t * t);
+            }
+        }
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::leaky_relu(float alpha) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_leaky_relu_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, alpha, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T val = (*this->data)[i];
+                (*result.data)[i] = val > 0 ? val : val * alpha;
+            }
+        }
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) result.ctx->creator = std::make_shared<LeakyReLUNode<T>>(*this, result, alpha);
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::leaky_relu_backward(const Tensor<T>& out_grad, float alpha) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_leaky_relu_backward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, out_grad.gpu_data->ptr, result.gpu_data->ptr, alpha, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                (*result.data)[i] = (*out_grad.data)[i] * ((*this->data)[i] > 0 ? 1.0f : alpha);
+            }
+        }
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::gelu() const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_gelu_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T x = (*this->data)[i];
+                (*result.data)[i] = 0.5f * x * (1.0f + std::tanh(0.7978845608f * (x + 0.044715f * x * x * x)));
+            }
+        }
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) result.ctx->creator = std::make_shared<GELUNode<T>>(*this, result);
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::gelu_backward(const Tensor<T>& out_grad) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_gelu_backward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, out_grad.gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T x = (*this->data)[i];
+                T x3 = x * x * x;
+                T t = std::tanh(0.7978845608f * (x + 0.044715f * x3));
+                T sech2 = 1.0f - t * t;
+                T grad_val = 0.5f * (1.0f + t) + 0.5f * x * sech2 * (0.7978845608f * (1.0f + 0.134145f * x * x));
+                (*result.data)[i] = (*out_grad.data)[i] * grad_val;
+            }
+        }
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::silu() const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_silu_forward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T x = (*this->data)[i];
+                (*result.data)[i] = x / (1.0f + std::exp(-x));
+            }
+        }
+        result.ctx->requires_grad = AutogradContext<T>::grad_mode && this->ctx->requires_grad;
+        if (result.ctx->requires_grad) result.ctx->creator = std::make_shared<SiLUNode<T>>(*this, result);
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::silu_backward(const Tensor<T>& out_grad) const {
+        Tensor<T> result;
+        if (this->is_cuda) {
+            result = Tensor<T>::empty_gpu(this->_shape);
+#ifdef __CUDACC__
+            int threads = 256; int blocks = (result.numel() + threads - 1) / threads;
+            cuda_silu_backward_kernel<<<blocks, threads>>>(this->gpu_data->ptr, out_grad.gpu_data->ptr, result.gpu_data->ptr, result.numel());
+#endif
+        } else {
+            result = Tensor<T>(this->_shape);
+            for (size_t i = 0; i < this->numel(); i++) {
+                T x = (*this->data)[i];
+                T sig = 1.0f / (1.0f + std::exp(-x));
+                (*result.data)[i] = (*out_grad.data)[i] * (sig + x * sig * (1.0f - sig));
+            }
+        }
+        return result;
     }
 } 
 

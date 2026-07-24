@@ -63,6 +63,17 @@ namespace vc{
         Tensor<T> sum(const vc::vector<int>& dims, bool keepdim = false) const;
         Tensor<T> relu() const;
         Tensor<T> relu_backward(const Tensor<T>& out_grad) const;
+        Tensor<T> softmax(int dim = -1) const;
+        Tensor<T> sigmoid() const;
+        Tensor<T> sigmoid_backward(const Tensor<T>& out_grad) const;
+        Tensor<T> tanh() const;
+        Tensor<T> tanh_backward(const Tensor<T>& out_grad) const;
+        Tensor<T> leaky_relu(float alpha = 0.01f) const;
+        Tensor<T> leaky_relu_backward(const Tensor<T>& out_grad, float alpha = 0.01f) const;
+        Tensor<T> gelu() const;
+        Tensor<T> gelu_backward(const Tensor<T>& out_grad) const;
+        Tensor<T> silu() const;
+        Tensor<T> silu_backward(const Tensor<T>& out_grad) const;
         
         size_t numel() const {
             return _numel;
@@ -355,6 +366,137 @@ namespace vc{
                     }
                 }
                 *(a.ctx->grad) = *(a.ctx->grad) + a.relu_backward(*(out_ctx_shared->grad));
+            }
+        }
+    };
+
+    template <typename T>
+    class SigmoidNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        SigmoidNode(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
+        vc::vector<Tensor<T>> get_parents() override { vc::vector<Tensor<T>> parents(1); parents[0] = a; return parents; }
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.sigmoid_backward(*(out_ctx_shared->grad));
+            }
+        }
+    };
+
+    template <typename T>
+    class TanhNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        TanhNode(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
+        vc::vector<Tensor<T>> get_parents() override { vc::vector<Tensor<T>> parents(1); parents[0] = a; return parents; }
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.tanh_backward(*(out_ctx_shared->grad));
+            }
+        }
+    };
+
+    template <typename T>
+    class LeakyReLUNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        float alpha;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        LeakyReLUNode(Tensor<T> a, Tensor<T> out, float alpha = 0.01f) : a(a), alpha(alpha), out_ctx(out.ctx) {}
+        vc::vector<Tensor<T>> get_parents() override { vc::vector<Tensor<T>> parents(1); parents[0] = a; return parents; }
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.leaky_relu_backward(*(out_ctx_shared->grad), alpha);
+            }
+        }
+    };
+
+    template <typename T>
+    class GELUNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        GELUNode(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
+        vc::vector<Tensor<T>> get_parents() override { vc::vector<Tensor<T>> parents(1); parents[0] = a; return parents; }
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.gelu_backward(*(out_ctx_shared->grad));
+            }
+        }
+    };
+
+    template <typename T>
+    class SiLUNode : public AutogradNode<T> {
+    private:
+        Tensor<T> a;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        SiLUNode(Tensor<T> a, Tensor<T> out) : a(a), out_ctx(out.ctx) {}
+        vc::vector<Tensor<T>> get_parents() override { vc::vector<Tensor<T>> parents(1); parents[0] = a; return parents; }
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (a.ctx->requires_grad) {
+                if (!a.ctx->grad) {
+                    if (a.is_cuda) {
+                        Tensor<T> grad_tensor = Tensor<T>::empty_gpu(a._shape);
+#ifdef __CUDACC__
+                        cudaMemset(grad_tensor.gpu_data->ptr, 0, grad_tensor.numel() * sizeof(T));
+#endif
+                        a.ctx->grad = std::make_shared<Tensor<T>>(grad_tensor);
+                    } else { a.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>(a._shape)); }
+                }
+                *(a.ctx->grad) = *(a.ctx->grad) + a.silu_backward(*(out_ctx_shared->grad));
             }
         }
     };

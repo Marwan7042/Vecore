@@ -52,6 +52,18 @@ namespace vc {
                 Tensor<T> out = (x * weight) + bias;
                 if (activation == "relu") {
                     return out.relu();
+                } else if (activation == "softmax") {
+                    return out.softmax();
+                } else if (activation == "sigmoid") {
+                    return out.sigmoid();
+                } else if (activation == "tanh") {
+                    return out.tanh();
+                } else if (activation == "leaky_relu") {
+                    return out.leaky_relu();
+                } else if (activation == "gelu") {
+                    return out.gelu();
+                } else if (activation == "silu" || activation == "swish") {
+                    return out.silu();
                 }
                 return out;
             }
