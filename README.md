@@ -4,9 +4,9 @@ A high-performance GPU-Accelerated Deep Learning framework built entirely from s
 
 Vecore replicates the core mathematical engine of PyTorch (Autograd, Tensors, Optimizers, Modules) with **zero third-party ML dependencies**. It features a custom reverse-mode automatic differentiation graph, hand-written CUDA kernels, and integrates with **NVIDIA cuBLAS** to leverage TF32 Tensor Cores.
 
-**🏆 Benchmark Achievement:** On the full 60,000-image MNIST dataset, the Vecore engine achieved **96.23% test accuracy**, outperforming an identical PyTorch implementation (95.61%) on the same hardware, while chewing through 9 million images in 84 seconds.
+** Benchmark Achievement:** On the full 60,000-image MNIST dataset, the Vecore engine achieved **96.23% test accuracy**, outperforming an identical PyTorch implementation (95.61%) on the same hardware, while chewing through 9 million images in 84 seconds.
 
-## 🚀 Key Features
+## Key Features
 
 * `Tensor<T>` - N-dimensional array with automatic CPU ↔ GPU transfers.
 * **Custom Autograd Engine** - Dynamic, reverse-mode topological sort differentiation.
@@ -16,17 +16,17 @@ Vecore replicates the core mathematical engine of PyTorch (Autograd, Tensors, Op
 * `CachingAllocator` - Zero-overhead GPU memory pool to eliminate `cudaMalloc` latency.
 * `vc::vector` - A custom STL implementation.
 
-## 📚 Documentation & Interactive Demo
+## Documentation & Interactive Demo
 
 Vecore comes with a beautiful, comprehensive documentation website and a live interactive browser demo! 
 
 Explore the API references, architecture guides, and draw digits to test the trained model directly in your browser.
 
-👉 **[View the Documentation & Demo](docs/index.html)** 
+ **[View the Documentation & Demo](docs/index.html)** 
 
 *(To view locally, open `docs/index.html` in your web browser)*
 
-## 💻 Quick Start
+## Quick Start
 
 Vecore is designed to feel instantly familiar to anyone who has used PyTorch.
 
@@ -56,7 +56,7 @@ int main() {
 }
 ```
 
-## 🛠️ Setup & Build
+## Setup & Build
 
 **Requirements:** 
 * C++17 compatible compiler (GCC 9+ or Clang 10+)
