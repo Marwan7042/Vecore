@@ -22,7 +22,7 @@ Vecore comes with a beautiful, comprehensive documentation website and a live in
 
 Explore the API references, architecture guides, and draw digits to test the trained model directly in your browser.
 
- **[View the Documentation & Demo](docs/index.html)** 
+ **[View the Documentation & Demo](https://Marwan7042.github.io/Vecore)** 
 
 *(To view locally, open `docs/index.html` in your web browser)*
 
