@@ -15,6 +15,25 @@ class Sequential {
 private:
     float lr = 0.01;
     std::string path;
+
+    static vc::vector<size_t> make_batch_shape(const vc::vector<size_t>& sample_shape, size_t batch_size) {
+        vc::vector<size_t> batch_shape;
+        if (sample_shape.size() >= 3 && sample_shape[0] == 1) {
+            batch_shape.push_back(batch_size);
+            for (size_t i = 0; i < sample_shape.size(); i++) {
+                batch_shape.push_back(sample_shape[i]);
+            }
+        } else if (sample_shape.size() > 0 && sample_shape[0] == 1) {
+            batch_shape = sample_shape;
+            batch_shape[0] = batch_size;
+        } else {
+            batch_shape.push_back(batch_size);
+            for (size_t i = 0; i < sample_shape.size(); i++) {
+                batch_shape.push_back(sample_shape[i]);
+            }
+        }
+        return batch_shape;
+    }
     
 public:
     /// Training samples used by the wrapper.
@@ -181,27 +200,9 @@ public:
             for (int b = 0; b < num_batches; b++) {                auto t0 = std::chrono::high_resolution_clock::now();
                 size_t start_idx = b * batch_size;
                 int current_batch_size = std::min((int)train_dataset.size() - (int)start_idx, batch_size);
-                vc::vector<size_t> x_shape;
-                if (train_dataset[0].image._shape.size() > 0 && train_dataset[0].image._shape[0] == 1) {
-                    x_shape = train_dataset[0].image._shape;
-                    x_shape[0] = current_batch_size;
-                } else {
-                    x_shape.push_back(current_batch_size);
-                    for (size_t i = 0; i < train_dataset[0].image._shape.size(); i++) {
-                        x_shape.push_back(train_dataset[0].image._shape[i]);
-                    }
-                }
+                vc::vector<size_t> x_shape = make_batch_shape(train_dataset[0].image._shape, current_batch_size);
                 
-                vc::vector<size_t> y_shape;
-                if (train_dataset[0].target._shape.size() > 0 && train_dataset[0].target._shape[0] == 1) {
-                    y_shape = train_dataset[0].target._shape;
-                    y_shape[0] = current_batch_size;
-                } else {
-                    y_shape.push_back(current_batch_size);
-                    for (size_t i = 0; i < train_dataset[0].target._shape.size(); i++) {
-                        y_shape.push_back(train_dataset[0].target._shape[i]);
-                    }
-                }
+                vc::vector<size_t> y_shape = make_batch_shape(train_dataset[0].target._shape, current_batch_size);
                 
                 vc::vector<size_t> x_strides(x_shape.size());
                 size_t c_s = 1;
@@ -258,22 +259,8 @@ public:
                 for (int b = 0; b < val_num_batches; b++) {
                     size_t start_idx = b * batch_size;
                     int current_batch_size = std::min((int)val_dataset->size() - (int)start_idx, batch_size);
-                    vc::vector<size_t> x_shape;
-                    if ((*val_dataset)[0].image._shape.size() > 0 && (*val_dataset)[0].image._shape[0] == 1) {
-                        x_shape = (*val_dataset)[0].image._shape;
-                        x_shape[0] = current_batch_size;
-                    } else {
-                        x_shape.push_back(current_batch_size);
-                        for (size_t i = 0; i < (*val_dataset)[0].image._shape.size(); i++) x_shape.push_back((*val_dataset)[0].image._shape[i]);
-                    }
-                    vc::vector<size_t> y_shape;
-                    if ((*val_dataset)[0].target._shape.size() > 0 && (*val_dataset)[0].target._shape[0] == 1) {
-                        y_shape = (*val_dataset)[0].target._shape;
-                        y_shape[0] = current_batch_size;
-                    } else {
-                        y_shape.push_back(current_batch_size);
-                        for (size_t i = 0; i < (*val_dataset)[0].target._shape.size(); i++) y_shape.push_back((*val_dataset)[0].target._shape[i]);
-                    }
+                    vc::vector<size_t> x_shape = make_batch_shape((*val_dataset)[0].image._shape, current_batch_size);
+                    vc::vector<size_t> y_shape = make_batch_shape((*val_dataset)[0].target._shape, current_batch_size);
                     
                     vc::vector<size_t> x_strides(x_shape.size());
                     size_t c_s = 1; for (int i = x_shape.size() - 1; i >= 0; i--) { x_strides[i] = c_s; c_s *= x_shape[i]; }
@@ -450,20 +437,8 @@ public:
             size_t start_idx = b * batch_size;
             int current_batch_size = std::min((int)test_dataset.size() - (int)start_idx, batch_size);
             
-            vc::vector<size_t> x_shape;
-            if (test_dataset[0].image._shape.size() > 0 && test_dataset[0].image._shape[0] == 1) {
-                x_shape = test_dataset[0].image._shape; x_shape[0] = current_batch_size;
-            } else {
-                x_shape.push_back(current_batch_size);
-                for (size_t i = 0; i < test_dataset[0].image._shape.size(); i++) x_shape.push_back(test_dataset[0].image._shape[i]);
-            }
-            vc::vector<size_t> y_shape;
-            if (test_dataset[0].target._shape.size() > 0 && test_dataset[0].target._shape[0] == 1) {
-                y_shape = test_dataset[0].target._shape; y_shape[0] = current_batch_size;
-            } else {
-                y_shape.push_back(current_batch_size);
-                for (size_t i = 0; i < test_dataset[0].target._shape.size(); i++) y_shape.push_back(test_dataset[0].target._shape[i]);
-            }
+            vc::vector<size_t> x_shape = make_batch_shape(test_dataset[0].image._shape, current_batch_size);
+            vc::vector<size_t> y_shape = make_batch_shape(test_dataset[0].target._shape, current_batch_size);
             
             vc::vector<size_t> x_strides(x_shape.size());
             size_t c_s = 1; for (int i = x_shape.size() - 1; i >= 0; i--) { x_strides[i] = c_s; c_s *= x_shape[i]; }

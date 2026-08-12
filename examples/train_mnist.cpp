@@ -18,14 +18,19 @@
 using namespace vc;
 namespace fs = std::filesystem;
 
-// A real Computer Vision MLP using our new Sequential API!
+// A compact CNN that should outperform a flat MLP on MNIST.
 Sequential build_model() {
-    return Sequential({
-        vc::nn::Dense<float>(784, 2048, "relu"),
-        vc::nn::Dense<float>(2048, 1024, "relu"),
-        vc::nn::Dense<float>(1024, 512, "relu"),
-        vc::nn::Dense<float>(512, 10, "none")
-    });
+    Sequential model;
+    model.add(std::make_shared<vc::nn::Conv2d<float>>(1, 32, 3, 1, 1));
+    model.add(std::make_shared<vc::nn::ReLU<float>>());
+    model.add(std::make_shared<vc::nn::MaxPool2d<float>>(2, 2));
+    model.add(std::make_shared<vc::nn::Conv2d<float>>(32, 64, 3, 1, 1));
+    model.add(std::make_shared<vc::nn::ReLU<float>>());
+    model.add(std::make_shared<vc::nn::MaxPool2d<float>>(2, 2));
+    model.add(std::make_shared<vc::nn::Flatten<float>>());
+    model.add(std::make_shared<vc::nn::Dense<float>>(64 * 7 * 7, 128, "relu"));
+    model.add(std::make_shared<vc::nn::Dense<float>>(128, 10, "none"));
+    return model;
 }
 
 std::vector<float> softmax_vec(const Tensor<float>& logits) {
@@ -47,7 +52,7 @@ Sample load_image(const std::string& filepath, int label) {
         throw std::runtime_error("Error in loading the image\n");
     }
 
-    vector<size_t> img_shape(2); img_shape[0] = 1; img_shape[1] = 784;
+    vector<size_t> img_shape(3); img_shape[0] = 1; img_shape[1] = 28; img_shape[2] = 28;
     Tensor<float> X(img_shape);
     for (int i = 0; i < 784; i++) {
         // Normalize pixel values from [0, 255] to [0.0, 1.0] for the neural network
@@ -114,7 +119,7 @@ int main() {
     cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
     
     MNISTDataset dataset(std::string(PROJECT_ROOT_DIR) + "/datasets/mnist_png/training/");
-    std::cout << "Building Deep MLP (784 -> 2048 -> 1024 -> 512 -> 10) to learn Computer Vision..." << std::endl;
+    std::cout << "Building CNN (Conv -> Pool -> Conv -> Pool -> Dense) to learn MNIST..." << std::endl;
     
     Sequential model = build_model();
     
@@ -126,7 +131,7 @@ int main() {
     auto start_time = std::chrono::high_resolution_clock::now();
     
     model.compile("adam");
-    model.fit(dataset.get_raw_data(), 500, 0.0001f, 2048, 30);
+    model.fit(dataset.get_raw_data(), 25, 0.001f, 64, 5);
     
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> training_duration = end_time - start_time;
@@ -142,9 +147,11 @@ int main() {
     for (size_t i = 0; i < test_dataset.size(); i += batch_size) {
         int current_batch_size = std::min((int)test_dataset.size() - (int)i, batch_size);
         
-        vector<size_t> x_shape(2);
+        vector<size_t> x_shape(4);
         x_shape[0] = current_batch_size;
-        x_shape[1] = 784;
+        x_shape[1] = 1;
+        x_shape[2] = 28;
+        x_shape[3] = 28;
         Tensor<float> X_batch(x_shape);
         
         for (int b = 0; b < current_batch_size; b++) {

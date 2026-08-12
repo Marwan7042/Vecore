@@ -111,6 +111,7 @@ __global__ void cuda_grad_bias_kernel(const T* out_grad, T* grad_bias, int out_c
         vc::vector<size_t> out_shape(3);
         out_shape[0] = batch_size;
         out_shape[1] = channels * kernel_h * kernel_w;
+        out_shape[2] = height_col * width_col;
         Tensor<T> col = Tensor<T>::empty_gpu(out_shape);
         
 #ifdef __CUDACC__
