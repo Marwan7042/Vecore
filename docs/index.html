@@ -648,9 +648,9 @@
             for(let i = 0; i < cols; i++) {
                 let v = input[i];
                 if (v === 0) continue; // Skip zero pixels/activations (huge speedup)
-                let offset = i * outCols;
                 for(let j = 0; j < outCols; j++) {
-                    res[j] += v * weight[offset + j];
+                    // Vecore exports dense weights as [out][in] rows in row-major order.
+                    res[j] += v * weight[j * cols + i];
                 }
             }
             return res;
