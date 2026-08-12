@@ -689,9 +689,13 @@
             let h2_raw = matmul(h1, model.w2, 1, 2048, 1024);
             let h2 = relu(add(h2_raw, model.b2));
             
-            // Layer 3 (Logits)
-            let logits_raw = matmul(h2, model.w3, 1, 1024, 10);
-            let logits = add(logits_raw, model.b3);
+            // Layer 3
+            let h3_raw = matmul(h2, model.w3, 1, 1024, 512);
+            let h3 = relu(add(h3_raw, model.b3));
+
+            // Layer 4 (Logits)
+            let logits_raw = matmul(h3, model.w4, 1, 512, 10);
+            let logits = add(logits_raw, model.b4);
             
             return softmax(logits);
         }
@@ -724,16 +728,21 @@
             try {
                 const response = await fetch('weights.json');
                 if (!response.ok) throw new Error('Weights not found');
-                const raw = await response.json();
-                
-                // Convert to Float32Arrays for speed
+                const raw = new Float32Array(await response.arrayBuffer());
+
+                let offset = 0;
+                const take = (count) => raw.slice(offset, offset += count);
+
+                // The training export writes parameters sequentially in binary float32 order.
                 model = {
-                    w1: new Float32Array(raw.w1.data),
-                    b1: new Float32Array(raw.b1.data),
-                    w2: new Float32Array(raw.w2.data),
-                    b2: new Float32Array(raw.b2.data),
-                    w3: new Float32Array(raw.w3.data),
-                    b3: new Float32Array(raw.b3.data)
+                    w1: take(784 * 2048),
+                    b1: take(2048),
+                    w2: take(2048 * 1024),
+                    b2: take(1024),
+                    w3: take(1024 * 512),
+                    b3: take(512),
+                    w4: take(512 * 10),
+                    b4: take(10)
                 };
                 
                 document.getElementById('statusOverlay').classList.add('hidden');
