@@ -18,6 +18,7 @@ namespace vc{
     template <typename T> struct AutogradContext;
     template <typename T> class Tensor;
 
+    /// Core n-dimensional tensor type with CPU/GPU storage and autograd metadata.
     template <typename T>
     class Tensor {
     public:
@@ -30,89 +31,109 @@ namespace vc{
         bool is_cuda = false;
         std::shared_ptr<GPUData<T>> gpu_data = nullptr;
 
-        // Default constructor: Initializes an empty tensor with a new AutogradContext
+        /// Creates an empty tensor with a fresh autograd context.
         Tensor();
 
-        // Parameterized internal constructor: Used to construct a tensor from pre-existing data, context, and GPU pointers
+        /// Builds a tensor from existing shape, strides, storage, context, and optional GPU state.
         Tensor(vc::vector<size_t> s, vc::vector<size_t> st, std::shared_ptr<vc::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda=false, std::shared_ptr<GPUData<T>> gd=nullptr);
 
-        // Shape constructor: Allocates memory for a tensor of the given shape and initializes it with zeros
+        /// Allocates a zero-initialized tensor for the given shape.
         Tensor(vc::vector<size_t> shape);
+        /// Allocates a tensor for the given shape, optionally skipping zeroing or CPU storage.
         Tensor(vc::vector<size_t> shape, bool zero_memory, bool allocate_cpu = true);
 
-        // Transfers the tensor's memory to the specified device (e.g., "cuda" or "cpu"). Returns a new tensor on that device.
+        /// Returns a copy of this tensor on the requested device.
         Tensor<T> to(const std::string& device) const;
 
-        // Accesses an element in the tensor by its multidimensional index. Returns a reference to the element.
+        /// Returns a mutable reference to the element at the given multidimensional index.
         T& operator()(const vc::vector<size_t>& dims);
         
-        // Returns a new tensor that represents the transposed version of this tensor (swaps the last two dimensions).
+        /// Returns a view with dimensions reversed.
         Tensor<T> transpose() const;    
 
-        // Adds two tensors element-wise and records the operation in the computation graph. Returns the sum tensor.
+        /// Adds two tensors element-wise and records the operation for autograd.
         Tensor<T> operator+(const Tensor<T>& other) const;
         
-        // Adds 'other' to this tensor in-place. Does NOT record in the computation graph (used for gradients).
+        /// Adds another tensor in place without recording a graph edge.
         Tensor<T>& operator+=(const Tensor<T>& other);
 
-        // Subtracts 'other' from this tensor element-wise and records the operation in the computation graph. Returns the difference tensor.
+        /// Subtracts another tensor element-wise and records the operation for autograd.
         Tensor<T> operator-(const Tensor<T>& other) const;
         
-        // Subtracts 'other' from this tensor in-place. Does NOT record in the computation graph.
+        /// Subtracts another tensor in place without recording a graph edge.
         Tensor<T>& operator-=(const Tensor<T>& other);
 
-        // Performs matrix multiplication between this tensor and 'other', recording it in the graph. Returns the product tensor.
+        /// Multiplies tensors using matrix multiplication semantics.
         Tensor<T> operator*(const Tensor<T>& other) const { return this->matmul(other); }
 
-        // Applies the Rectified Linear Unit (ReLU) activation function element-wise. Returns the activated tensor.
+        /// Performs matrix multiplication with optional transposition flags.
         Tensor<T> matmul(const Tensor<T>& other, bool transA = false, bool transB = false) const;
+        /// Accumulates a matrix product directly into an existing output tensor.
         void matmul_accumulate(const Tensor<T>& other, Tensor<T>& accum, bool transA = false, bool transB = false) const;
+        /// Sums the specified dimensions, optionally keeping the reduced axes.
         Tensor<T> sum(const vc::vector<int>& dims, bool keepdim = false) const;
+        /// Applies ReLU element-wise.
         Tensor<T> relu() const;
+        /// Backpropagates through ReLU into an accumulation tensor.
         void relu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
+        /// Applies a numerically stable softmax along the last dimension.
         Tensor<T> softmax(int dim = -1) const;
+        /// Applies the logistic sigmoid element-wise.
         Tensor<T> sigmoid() const;
+        /// Backpropagates through sigmoid into an accumulation tensor.
         void sigmoid_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
+        /// Applies tanh element-wise.
         Tensor<T> tanh() const;
+        /// Backpropagates through tanh into an accumulation tensor.
         void tanh_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
+        /// Applies leaky ReLU element-wise.
         Tensor<T> leaky_relu(float alpha = 0.01f) const;
+        /// Backpropagates through leaky ReLU into an accumulation tensor.
         void leaky_relu_backward(const Tensor<T>& out_grad, Tensor<T>& accum, float alpha = 0.01f) const;
+        /// Applies GELU element-wise.
         Tensor<T> gelu() const;
+        /// Backpropagates through GELU into an accumulation tensor.
         void gelu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
+        /// Applies SiLU / Swish element-wise.
         Tensor<T> silu() const;
+        /// Backpropagates through SiLU / Swish into an accumulation tensor.
         void silu_backward(const Tensor<T>& out_grad, Tensor<T>& accum) const;
         
-        size_t numel() const {
-            return _numel;
-        }
+        /// Returns the number of elements in the tensor.
+        size_t numel() const { return _numel; }
 
+        /// Allocates an empty tensor directly on the GPU.
         static Tensor<T> empty_gpu(const vc::vector<size_t>& shape);
         
+        /// Fast fused backward path for cross-entropy training.
         void fast_cross_entropy_backward(const Tensor<T>& target, float* d_loss, int* d_correct);
         
-        // Optimizer hooks
+        /// Applies a vanilla SGD update using the stored gradient.
         void sgd_update(float lr);
+        /// Applies an Adam update using the provided moment buffers.
+        void adam_update(Tensor<T>& m, Tensor<T>& v, float lr, float beta1, float beta2, float eps, int t);
+        /// Zeros the gradient tensor, if one exists.
         void zero_grad();
+        /// Zeros only the gradient storage while preserving the tensor data.
         void zero_grad_data();
+        /// Fills the tensor storage with zeros.
         Tensor<T>& zero_();
 
-        // Reshapes the tensor to a new shape without modifying underlying data.
+        /// Returns a reshaped view with the same underlying storage.
         Tensor<T> reshape(const vc::vector<size_t>& new_shape) const;
 
-        // Initiates the reverse-mode auto-differentiation (backpropagation) from this tensor, computing gradients for all dependent tensors.
+        /// Starts reverse-mode automatic differentiation from this tensor.
         void backward();
 
-        // Prints the shape, strides, and actual data contents of the tensor to standard output.
+        /// Prints the tensor metadata and values to standard output.
         void print() const;
         
-        // Returns the scalar value of a 1-element tensor.
+        /// Returns the scalar value of a one-element tensor.
         T item() const {
             if (numel() != 1) throw std::runtime_error("item() only valid for scalar tensors");
             return this->is_cuda ? (*this->to("cpu").data)[0] : (*this->data)[0];
         }
     };
-
-
 
     template <typename T>
     struct CachingAllocator {
@@ -132,6 +153,7 @@ namespace vc{
             free_blocks[size].push_back(ptr);
         }
     };
+
     template <typename T> 
     inline thread_local std::unordered_map<size_t, std::vector<T*>> CachingAllocator<T>::free_blocks;
 
@@ -391,6 +413,7 @@ namespace vc{
         }
     };
 
+    /// Autograd node for sigmoid.
     template <typename T>
     class SigmoidNode : public AutogradNode<T> {
     private:
@@ -417,6 +440,7 @@ namespace vc{
         }
     };
 
+    /// Autograd node for tanh.
     template <typename T>
     class TanhNode : public AutogradNode<T> {
     private:
@@ -443,6 +467,7 @@ namespace vc{
         }
     };
 
+    /// Autograd node for leaky ReLU.
     template <typename T>
     class LeakyReLUNode : public AutogradNode<T> {
     private:
@@ -470,6 +495,7 @@ namespace vc{
         }
     };
 
+    /// Autograd node for GELU.
     template <typename T>
     class GELUNode : public AutogradNode<T> {
     private:
@@ -496,6 +522,7 @@ namespace vc{
         }
     };
 
+    /// Autograd node for SiLU / Swish.
     template <typename T>
     class SiLUNode : public AutogradNode<T> {
     private:
@@ -522,8 +549,7 @@ namespace vc{
         }
     };
 
-    // Graph node representing device transfers (.to("cuda") or .to("cpu"))
-    // Automatically propagates gradients across the PCIe bus during backward pass.
+    /// Autograd node for device transfers.
     template <typename T>
     class ToNode : public AutogradNode<T> {
     private:
@@ -561,6 +587,108 @@ namespace vc{
         }
     };
 
+    /// GPU helper that extracts image patches into column form.
+    template <typename T>
+    Tensor<T> im2col_gpu(const Tensor<T>& im, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    /// GPU helper that folds column data back into an image tensor.
+    template <typename T>
+    void col2im_gpu(const Tensor<T>& col, Tensor<T>& im, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    /// Forward pass for max pooling on the GPU.
+    template <typename T>
+    void maxpool2d_forward_gpu(const Tensor<T>& bottom, Tensor<T>& top, Tensor<T>& argmax, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    /// Backward pass for max pooling on the GPU.
+    template <typename T>
+    void maxpool2d_backward_gpu(const Tensor<T>& top_diff, const Tensor<T>& argmax, Tensor<T>& bottom_diff, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    
+    template <typename T>
+    Tensor<T> im2col_gpu(const Tensor<T>& im, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    template <typename T>
+    void col2im_gpu(const Tensor<T>& col, Tensor<T>& im, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    template <typename T>
+    void maxpool2d_forward_gpu(const Tensor<T>& bottom, Tensor<T>& top, Tensor<T>& argmax, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+    template <typename T>
+    void maxpool2d_backward_gpu(const Tensor<T>& top_diff, const Tensor<T>& argmax, Tensor<T>& bottom_diff, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w);
+
+    /// Forward pass for 2D convolution on the GPU.
+    template <typename T>
+    Tensor<T> conv2d_forward_gpu(const Tensor<T>& input, const Tensor<T>& weight, const Tensor<T>& bias, int stride_h, int stride_w, int pad_h, int pad_w);
+    /// Backward pass for 2D convolution on the GPU.
+    template <typename T>
+    void conv2d_backward_gpu(const Tensor<T>& out_grad, const Tensor<T>& input, const Tensor<T>& weight, Tensor<T>& grad_input, Tensor<T>& grad_weight, Tensor<T>& grad_bias, int stride_h, int stride_w, int pad_h, int pad_w);
+
+    /// Autograd node for 2D convolution.
+    template <typename T>
+    class Conv2dNode : public AutogradNode<T> {
+    private:
+        Tensor<T> input, weight, bias;
+        int stride_h, stride_w, pad_h, pad_w;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        Conv2dNode(Tensor<T> input, Tensor<T> weight, Tensor<T> bias, int stride_h, int stride_w, int pad_h, int pad_w, Tensor<T> out)
+            : input(input), weight(weight), bias(bias), stride_h(stride_h), stride_w(stride_w), pad_h(pad_h), pad_w(pad_w), out_ctx(out.ctx) {}
+            
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents;
+            parents.push_back(input); parents.push_back(weight); 
+            if (bias.numel() > 0) parents.push_back(bias);
+            return parents;
+        }
+
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            
+            Tensor<T> grad_input, grad_weight, grad_bias;
+            
+            if (input.ctx->requires_grad) {
+                if (!input.ctx->grad) input.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>::empty_gpu(input._shape).zero_());
+                grad_input = *input.ctx->grad;
+            } else {
+                grad_input = Tensor<T>::empty_gpu(input._shape).zero_();
+            }
+            if (weight.ctx->requires_grad) {
+                if (!weight.ctx->grad) weight.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>::empty_gpu(weight._shape).zero_());
+                grad_weight = *weight.ctx->grad;
+            } else {
+                grad_weight = Tensor<T>::empty_gpu(weight._shape).zero_();
+            }
+            if (bias.numel() > 0) {
+                if (bias.ctx->requires_grad) {
+                    if (!bias.ctx->grad) bias.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>::empty_gpu(bias._shape).zero_());
+                    grad_bias = *bias.ctx->grad;
+                } else {
+                    grad_bias = Tensor<T>::empty_gpu(bias._shape).zero_();
+                }
+            }
+            
+            conv2d_backward_gpu(*out_ctx_shared->grad, input, weight, grad_input, grad_weight, grad_bias, stride_h, stride_w, pad_h, pad_w);
+        }
+    };
+
+    /// Autograd node for max pooling.
+    template <typename T>
+    class MaxPool2dNode : public AutogradNode<T> {
+    private:
+        Tensor<T> input, argmax;
+        int kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w;
+        std::weak_ptr<AutogradContext<T>> out_ctx;
+    public:
+        MaxPool2dNode(Tensor<T> input, Tensor<T> argmax, int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w, Tensor<T> out)
+            : input(input), argmax(argmax), kernel_h(kernel_h), kernel_w(kernel_w), stride_h(stride_h), stride_w(stride_w), pad_h(pad_h), pad_w(pad_w), out_ctx(out.ctx) {}
+            
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(1); parents[0] = input; return parents;
+        }
+
+        void backward() override {
+            auto out_ctx_shared = out_ctx.lock();
+            if (!out_ctx_shared || !out_ctx_shared->grad) return;
+            if (input.ctx->requires_grad) {
+                if (!input.ctx->grad) input.ctx->grad = std::make_shared<Tensor<T>>(Tensor<T>::empty_gpu(input._shape).zero_());
+                maxpool2d_backward_gpu(*out_ctx_shared->grad, argmax, *input.ctx->grad, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w);
+            }
+        }
+    };
 }
 
 #endif

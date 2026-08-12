@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <random>
+#include <algorithm>
 #include <filesystem>
 #include <cmath>
 #include <thread>
@@ -78,6 +80,10 @@ public:
             }
         }
         
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(file_list.begin(), file_list.end(), g);
+
         data.resize(file_list.size());
         
         int num_threads = std::thread::hardware_concurrency();
@@ -108,7 +114,7 @@ int main() {
     cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
     
     MNISTDataset dataset(std::string(PROJECT_ROOT_DIR) + "/datasets/mnist_png/training/");
-    std::cout << "Building Deep MLP (784 -> 2048 -> 1024 -> 10) to learn Computer Vision..." << std::endl;
+    std::cout << "Building Deep MLP (784 -> 2048 -> 1024 -> 512 -> 10) to learn Computer Vision..." << std::endl;
     
     Sequential model = build_model();
     
@@ -119,7 +125,8 @@ int main() {
     std::cout << "\nTraining..." << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    model.fit(dataset, 150, 0.3f, 8192, 5);
+    model.compile("adam");
+    model.fit(dataset.get_raw_data(), 500, 0.0001f, 2048, 30);
     
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> training_duration = end_time - start_time;
