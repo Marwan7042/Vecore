@@ -3,132 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Network Layers - Vecore Docs</title>
+    <title>Neural Networks - Vecore Docs</title>
     <link rel="stylesheet" href="../assets/docs.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar">
-    <div class="nav-content">
-        <a href="../index.html" class="logo">Vecore</a>
-        <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="../index.html#demo">Demo</a>
-            <a href="getting-started.html" class="active">Docs</a>
-            <a href="https://github.com/Marwan7042/Vecore" target="_blank">GitHub</a>
+        <div class="nav-content">
+            <a href="../index.html" class="logo">Vecore</a>
+            <div class="nav-links">
+                <a href="../index.html">Home</a>
+                <a href="../index.html#demo">Demo</a>
+                <a href="getting-started.html" class="active">Docs</a>
+                <a href="https://github.com/Marwan7042/Vecore" target="_blank">GitHub</a>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
+
     <div class="layout-container">
         <aside class="sidebar">
-    <div class="sidebar-section">
-        <ul class="sidebar-nav">
-            <li><a href="getting-started.html">Getting Started</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Core API</div>
-        <ul class="sidebar-nav">
-            <li><a href="tensor.html">Tensor</a></li>
-            <li><a href="nn.html" class="active">Dense Layer</a></li>
-            <li><a href="sequential.html">Sequential</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Training</div>
-        <ul class="sidebar-nav">
-            <li><a href="optim.html">Optimizers</a></li>
-            <li><a href="data.html">Data Loading</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Advanced</div>
-        <ul class="sidebar-nav">
-            <li><a href="cuda.html">CUDA Acceleration</a></li>
-        </ul>
-    </div>
-</aside>
+            <div class="sidebar-section">
+                <ul class="sidebar-nav">
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-heading">Core API</div>
+                <ul class="sidebar-nav">
+                    <li><a href="tensor.html">Tensor</a></li>
+                    <li><a href="nn.html" class="active">Neural Networks</a></li>
+                    <li><a href="sequential.html">Sequential</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-heading">Training</div>
+                <ul class="sidebar-nav">
+                    <li><a href="optim.html">Optimizers</a></li>
+                    <li><a href="data.html">Data Loading</a></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-heading">Advanced</div>
+                <ul class="sidebar-nav">
+                    <li><a href="cuda.html">CUDA Acceleration</a></li>
+                </ul>
+            </div>
+        </aside>
+
         <main class="content">
+            <div class="breadcrumb">Docs > Core API > Neural Networks</div>
+            <h1>Neural Network API</h1>
+            <p class="subtitle">Layers and losses in vc::nn for MLPs and CNNs.</p>
 
-            <div class="breadcrumb">Docs > Core API > Dense Layer</div>
-            <h1>Neural Network Layers</h1>
-            <p>
-                In deep learning, layers are the building blocks that transform your data. While you <em>could</em> do all the matrix multiplications manually using Vecore's Tensor API, the <code>vc::nn</code> namespace provides a clean, object-oriented way to define these transformations. Each layer automatically manages its own trainable weights and biases.
-            </p>
-            
-            <div class="api-card">
-                <h2><code><span class="kw">vc::nn::</span>Dense&lt;T&gt;</code> — Fully Connected Layer</h2>
-                <p>
-                    The <code>Dense</code> layer (also known as a linear or fully-connected layer) applies a linear transformation to the incoming data: <code>Y = (X × W) + B</code>. After the transformation, it can optionally apply a non-linear activation function like ReLU or Sigmoid.
-                </p>
-                
-                <h3>Constructor</h3>
-                <pre><code><span class="fn">Dense</span>(<span class="ty">size_t</span> inputs, <span class="ty">size_t</span> neurons, <span class="ty">std::string</span> activation = <span class="st">"none"</span>)</code></pre>
-                <ul>
-                    <li>Xavier/Glorot uniform initialization: limit = sqrt(6 / (in + out))</li>
-                    <li>Bias initialized to zero</li>
-                    <li>Both weight and bias have <code>requires_grad = true</code></li>
-                </ul>
-                
-                <h3>Methods</h3>
-                <ul>
-                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; x)</code> — forward pass</li>
-                    <li><code><span class="ty">vc::vector&lt;Tensor&lt;T&gt;*&gt;</span> <span class="fn">parameters</span>()</code> — returns <code>[&amp;weight, &amp;bias]</code></li>
-                    <li><code><span class="ty">Dense&lt;T&gt;</span> <span class="fn">to</span>(<span class="kw">const</span> <span class="ty">std::string</span>&amp; device)</code> — device transfer</li>
-                </ul>
-            </div>
+            <section class="content-section">
+                <h2>Layer Base Class</h2>
+                <div class="api-card">
+                    <pre><code>template &lt;typename T&gt;
+class Layer {
+public:
+    virtual ~Layer() {}
+    virtual Tensor&lt;T&gt; operator()(const Tensor&lt;T&gt;&amp; x) = 0;
+    virtual vc::vector&lt;Tensor&lt;T&gt;*&gt; parameters();
+    virtual void to(const std::string&amp; device);
+};</code></pre>
+                    <p>All trainable modules implement this interface. Sequential stores layers via shared_ptr&lt;Layer&lt;float&gt;&gt;.</p>
+                </div>
+            </section>
 
-            <h2>Loss Functions</h2>
-            <p>
-                To teach your network, you need to measure how wrong it is. Loss functions compare your network's predictions against the true labels and return a single scalar value. Calling <code>.backward()</code> on this value is what kicks off the learning process.
-            </p>
-            <div class="api-card">
-                <h3><code><span class="kw">vc::nn::</span>MSELoss&lt;T&gt;</code> — Mean Squared Error</h3>
-                <ul>
-                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; predictions, <span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; targets)</code></li>
-                    <li>Formula: loss = mean((pred - target)²)</li>
-                    <li>Gradient: 2(pred - target)</li>
-                </ul>
-            </div>
+            <section class="content-section">
+                <h2>Dense</h2>
+                <div class="api-card">
+                    <h3>Constructor</h3>
+                    <pre><code>vc::nn::Dense&lt;float&gt;(size_t in_features, size_t out_features, std::string activation = "none")</code></pre>
+                    <ul>
+                        <li>Xavier/Glorot weight init.</li>
+                        <li>Bias initialized to 0.</li>
+                        <li>Supported activation values: none, relu, softmax, sigmoid, tanh, leaky_relu, gelu, silu.</li>
+                    </ul>
+                </div>
+                <div class="api-card">
+                    <h3>Forward</h3>
+                    <pre><code>Tensor&lt;float&gt; y = dense(x);</code></pre>
+                    <p>Computes y = x * W^T + b, then optional activation.</p>
+                </div>
+            </section>
 
-            <div class="api-card">
-                <h3><code><span class="kw">vc::nn::</span>CrossEntropyLoss&lt;T&gt;</code> — Cross Entropy with Softmax</h3>
-                <ul>
-                    <li><code><span class="ty">Tensor&lt;T&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; logits, <span class="kw">const</span> <span class="ty">Tensor&lt;T&gt;</span>&amp; targets)</code></li>
-                    <li>Numerically stable softmax + negative log likelihood</li>
-                    <li>Gradient: (softmax(logits) - targets) / batch_size</li>
-                </ul>
-            </div>
-            
-            <div class="callout-warning">
-                <strong>Warning:</strong> For CrossEntropyLoss, the <code>targets</code> tensor must be one-hot encoded.
-            </div>
+            <section class="content-section">
+                <h2>Conv2d</h2>
+                <div class="api-card">
+                    <h3>Constructor</h3>
+                    <pre><code>vc::nn::Conv2d&lt;float&gt;(int in_channels, int out_channels, int kernel_size, int stride = 1, int padding = 0)</code></pre>
+                    <p>Input shape is batch, channels, height, width.</p>
+                    <p>Weight shape is out_channels, in_channels, kernel_h, kernel_w.</p>
+                </div>
+                <div class="api-card">
+                    <h3>Example</h3>
+                    <pre><code>Sequential model;
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(1, 32, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());</code></pre>
+                </div>
+            </section>
 
-            <h2>Example: Complete Workflow</h2>
-            <pre><code><span class="cm">// 1. Create layers and data</span>
-<span class="ty">vc::nn::Dense&lt;float&gt;</span> <span class="fn">layer1</span>(<span class="nu">784</span>, <span class="nu">128</span>, <span class="st">"relu"</span>);
-<span class="ty">vc::nn::Dense&lt;float&gt;</span> <span class="fn">layer2</span>(<span class="nu">128</span>, <span class="nu">10</span>, <span class="st">"none"</span>);
-<span class="ty">vc::nn::CrossEntropyLoss&lt;float&gt;</span> criterion;
-<span class="ty">vc::optim::SGD&lt;float&gt;</span> <span class="fn">optimizer</span>({layer1.parameters(), layer2.parameters()}, <span class="nu">0.01</span>);
+            <section class="content-section">
+                <h2>MaxPool2d</h2>
+                <div class="api-card">
+                    <h3>Constructor</h3>
+                    <pre><code>vc::nn::MaxPool2d&lt;float&gt;(int kernel_size, int stride = -1, int padding = 0)</code></pre>
+                    <p>If stride is -1, stride defaults to kernel_size.</p>
+                </div>
+            </section>
 
-<span class="cm">// 2. Forward pass</span>
-<span class="kw">auto</span> hidden = <span class="fn">layer1</span>(inputs);
-<span class="kw">auto</span> logits = <span class="fn">layer2</span>(hidden);
+            <section class="content-section">
+                <h2>Flatten and ReLU Layers</h2>
+                <div class="api-card">
+                    <pre><code>vc::nn::Flatten&lt;float&gt;()
+vc::nn::ReLU&lt;float&gt;()</code></pre>
+                    <ul>
+                        <li>Flatten converts N,C,H,W into N, C*H*W.</li>
+                        <li>ReLU layer is a module wrapper around Tensor::relu().</li>
+                    </ul>
+                </div>
+            </section>
 
-<span class="cm">// 3. Compute loss</span>
-<span class="kw">auto</span> loss = <span class="fn">criterion</span>(logits, targets);
+            <section class="content-section">
+                <h2>Loss Functions</h2>
+                <div class="api-card">
+                    <h3>CrossEntropyLoss</h3>
+                    <pre><code>vc::nn::CrossEntropyLoss&lt;float&gt; criterion;
+Tensor&lt;float&gt; loss = criterion(logits, one_hot_targets);</code></pre>
+                    <p>Expected target format is one-hot encoded classes.</p>
+                </div>
+                <div class="api-card">
+                    <h3>MSELoss</h3>
+                    <pre><code>vc::nn::MSELoss&lt;float&gt; mse;
+Tensor&lt;float&gt; loss = mse(predictions, targets);</code></pre>
+                </div>
+            </section>
 
-<span class="cm">// 4. Backward pass</span>
-loss.<span class="fn">backward</span>();
+            <section class="content-section">
+                <h2>CNN Training Example</h2>
+                <div class="code-block">
+                    <pre><code>Sequential model;
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(1, 32, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::MaxPool2d&lt;float&gt;&gt;(2, 2));
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(32, 64, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::MaxPool2d&lt;float&gt;&gt;(2, 2));
+model.add(std::make_shared&lt;vc::nn::Flatten&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::Dense&lt;float&gt;&gt;(64 * 7 * 7, 128, "relu"));
+model.add(std::make_shared&lt;vc::nn::Dense&lt;float&gt;&gt;(128, 10, "none"));
 
-<span class="cm">// 5. Optimizer step</span>
-optimizer.<span class="fn">step</span>();
-optimizer.<span class="fn">zero_grad</span>();</code></pre>
+model.to("cuda");</code></pre>
+                </div>
+            </section>
 
             <footer class="footer">
                 <p>Built from scratch by Marwan Mahmoud</p>
             </footer>
-        
         </main>
     </div>
 </body>

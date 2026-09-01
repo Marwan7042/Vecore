@@ -13,3 +13,18 @@ target_link_libraries(trainmnist PRIVATE vecore::vecore)
 target_link_libraries(train PRIVATE vecore::vecore)
 target_link_libraries(trainsatellite PRIVATE vecore::vecore)
 
+
+add_executable(train_cloud_filter train_cloud_filter.cpp)
+target_link_libraries(train_cloud_filter vecore)
+
+add_executable(train_dark_vessel train_dark_vessel.cpp)
+target_link_libraries(train_dark_vessel vecore)
+
+add_executable(train_wildfire train_wildfire.cpp)
+target_link_libraries(train_wildfire vecore)
+
+add_executable(train_deforestation train_deforestation.cpp)
+target_link_libraries(train_deforestation vecore)
+
+add_executable(train_methane train_methane.cpp)
+target_link_libraries(train_methane vecore)

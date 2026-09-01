@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar">
+<nav class="navbar">
     <div class="nav-content">
         <a href="../index.html" class="logo">Vecore</a>
         <div class="nav-links">
@@ -19,111 +19,117 @@
         </div>
     </div>
 </nav>
-    <div class="layout-container">
-        <aside class="sidebar">
-    <div class="sidebar-section">
-        <ul class="sidebar-nav">
-            <li><a href="getting-started.html">Getting Started</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Core API</div>
-        <ul class="sidebar-nav">
-            <li><a href="tensor.html">Tensor</a></li>
-            <li><a href="nn.html">Dense Layer</a></li>
-            <li><a href="sequential.html" class="active">Sequential</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Training</div>
-        <ul class="sidebar-nav">
-            <li><a href="optim.html">Optimizers</a></li>
-            <li><a href="data.html">Data Loading</a></li>
-        </ul>
-    </div>
-    <div class="sidebar-section">
-        <div class="sidebar-heading">Advanced</div>
-        <ul class="sidebar-nav">
-            <li><a href="cuda.html">CUDA Acceleration</a></li>
-        </ul>
-    </div>
-</aside>
-        <main class="content">
+<div class="layout-container">
+    <aside class="sidebar">
+        <div class="sidebar-section"><ul class="sidebar-nav"><li><a href="getting-started.html">Getting Started</a></li></ul></div>
+        <div class="sidebar-section">
+            <div class="sidebar-heading">Core API</div>
+            <ul class="sidebar-nav">
+                <li><a href="tensor.html">Tensor</a></li>
+                <li><a href="nn.html">Neural Networks</a></li>
+                <li><a href="sequential.html" class="active">Sequential</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-heading">Training</div>
+            <ul class="sidebar-nav">
+                <li><a href="optim.html">Optimizers</a></li>
+                <li><a href="data.html">Data Loading</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-heading">Advanced</div>
+            <ul class="sidebar-nav"><li><a href="cuda.html">CUDA Acceleration</a></li></ul>
+        </div>
+    </aside>
 
-            <div class="breadcrumb">Docs > Core API > Sequential</div>
-            <h1>Sequential — The Model Container</h1>
-            
-            <p>
-                As you build deeper networks, managing individual layers, passing outputs between them, and aggregating parameters for the optimizer quickly becomes tedious. 
-                The <code>Sequential</code> container solves this. Inspired by PyTorch's <code>nn.Sequential</code>, it takes a list of layers, links them together, and acts as a single model. Beyond just being a container, it provides a highly optimized, asynchronous training pipeline out of the box.
-            </p>
-            
+    <main class="content">
+        <div class="breadcrumb">Docs > Core API > Sequential</div>
+        <h1>Sequential API</h1>
+        <p class="subtitle">High-level model container for forward pass, training, evaluation, and checkpointing.</p>
+
+        <section class="content-section">
+            <h2>Construction Patterns</h2>
             <div class="api-card">
-                <h2>Constructor</h2>
-                <pre><code><span class="fn">Sequential</span>(<span class="ty">std::initializer_list&lt;vc::nn::Dense&lt;float&gt;&gt;</span> layers)</code></pre>
-                <p>Example:</p>
-                <pre><code><span class="ty">Sequential</span> <span class="fn">model</span>({ <span class="ty">Dense</span>(<span class="nu">784</span>, <span class="nu">2048</span>, <span class="st">"relu"</span>), <span class="ty">Dense</span>(<span class="nu">2048</span>, <span class="nu">10</span>, <span class="st">"none"</span>) });</code></pre>
+                <h3>Pattern A: start empty and add layers</h3>
+                <pre><code>Sequential model;
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(1, 32, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());</code></pre>
             </div>
-            
             <div class="api-card">
-                <h2>Methods</h2>
+                <h3>Pattern B: variadic constructor</h3>
+                <pre><code>Sequential model(
+    vc::nn::Dense&lt;float&gt;(784, 2048, "relu"),
+    vc::nn::Dense&lt;float&gt;(2048, 1024, "relu"),
+    vc::nn::Dense&lt;float&gt;(1024, 10, "none")
+);</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>Core Methods</h2>
+            <div class="api-card">
                 <ul>
-                    <li><code><span class="ty">Sequential&amp;</span> <span class="fn">to</span>(<span class="kw">const</span> <span class="ty">std::string&amp;</span> device)</code> — transfers all layers</li>
-                    <li><code><span class="ty">Tensor&lt;float&gt;</span> <span class="kw">operator()</span>(<span class="kw">const</span> <span class="ty">Tensor&lt;float&gt;&amp;</span> x)</code> — sequential forward pass</li>
-                    <li><code><span class="ty">vc::vector&lt;Tensor&lt;float&gt;*&gt;</span> <span class="fn">parameters</span>()</code> — all parameters across all layers</li>
-                    <li><code><span class="kw">void</span> <span class="fn">save</span>(<span class="kw">const</span> <span class="ty">std::string&amp;</span> filepath)</code> — exports weights as JSON</li>
+                    <li><code>void add(std::shared_ptr&lt;vc::nn::Layer&lt;float&gt;&gt; layer)</code>: appends a layer.</li>
+                    <li><code>Sequential&amp; to(const std::string&amp; device)</code>: moves all parameters to cpu or cuda.</li>
+                    <li><code>vc::Tensor&lt;float&gt; operator()(const vc::Tensor&lt;float&gt;&amp; x)</code>: model forward pass.</li>
+                    <li><code>vc::vector&lt;vc::Tensor&lt;float&gt;*&gt; parameters()</code>: all trainable parameters.</li>
                 </ul>
-                
-                <h3>The Main Training Method</h3>
-                <pre><code><span class="kw">void</span> <span class="fn">fit</span>(<span class="ty">InMemoryDataset&amp;</span> dataset, <span class="ty">int</span> epochs, <span class="ty">float</span> lr, <span class="ty">int</span> batch_size, <span class="ty">int</span> patience = <span class="nu">0</span>, <span class="ty">float</span> min_delta = <span class="nu">1e-5f</span>)</code></pre>
-                <p>This method implements an async GPU pipeline with built-in early stopping:</p>
-                <ol>
-                    <li>Pre-packs dataset into contiguous pinned memory</li>
-                    <li>Creates CUDA streams for double-buffered transfers</li>
-                    <li>Overlaps data transfer with GPU compute</li>
-                    <li>Uses fused cross-entropy kernel on GPU</li>
-                    <li>Synchronizes once per epoch</li>
-                    <li><strong>Early Stopping:</strong> If <code>patience &gt; 0</code>, monitors training loss. If the loss does not improve by at least <code>min_delta</code> for <code>patience</code> epochs, training halts and the best model weights are restored.</li>
-                </ol>
             </div>
-            
+        </section>
+
+        <section class="content-section">
+            <h2>Training: fit</h2>
             <div class="api-card">
-                <h2>Training Pipeline Diagram</h2>
-                <pre>
-[Pinned Memory]       [CUDA Stream 1]       [CUDA Stream 2]
-    Batch N   ---H2D---> Transfer N 
-                            |
-    Batch N+1            Compute N   ---H2D---> Transfer N+1
-                                                   |
-    Batch N+2                                   Compute N+1
-                </pre>
+                <pre><code>void fit(
+    std::vector&lt;Sample&gt;&amp; train_dataset,
+    int epochs = 50,
+    float learning_rate = 0.001f,
+    int batch_size = 1024,
+    int patience = 0,
+    float min_delta = 1e-5f,
+    std::vector&lt;Sample&gt;* val_dataset = nullptr
+);</code></pre>
+                <p>Supports SGD and Adam via compile(). Uses fused GPU cross-entropy path when tensors are on CUDA.</p>
+                <p>Early stopping: if patience > 0 and validation loss does not improve by min_delta, best weights are restored.</p>
             </div>
+            <div class="callout info"><strong>Input shapes:</strong> CNN inputs should be stored per sample as C,H,W (for MNIST: 1,28,28). Dense-only inputs can remain flattened.</div>
+        </section>
 
-            <h2>Full Training Example</h2>
-            <pre><code><span class="cm">// Load dataset</span>
-<span class="ty">MNISTDataset</span> <span class="fn">train_dataset</span>(<span class="st">"data/train-images.idx3-ubyte"</span>, <span class="st">"data/train-labels.idx1-ubyte"</span>);
+        <section class="content-section">
+            <h2>Evaluation and Checkpointing</h2>
+            <div class="api-card">
+                <ul>
+                    <li><code>void evaluate(std::vector&lt;Sample&gt;&amp; test_dataset, int batch_size = 64)</code></li>
+                    <li><code>void save(const std::string&amp; filepath)</code></li>
+                    <li><code>void load(const std::string&amp; filepath)</code></li>
+                </ul>
+                <p>save/load use binary float32 parameter streams in layer order. This is intentionally compact and fast.</p>
+            </div>
+        </section>
 
-<span class="cm">// Define model</span>
-<span class="ty">Sequential</span> <span class="fn">model</span>({
-    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">784</span>, <span class="nu">512</span>, <span class="st">"relu"</span>),
-    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">512</span>, <span class="nu">256</span>, <span class="st">"relu"</span>),
-    <span class="ty">vc::nn::Dense&lt;float&gt;</span>(<span class="nu">256</span>, <span class="nu">10</span>, <span class="st">"none"</span>)
-});
+        <section class="content-section">
+            <h2>Complete CNN Example</h2>
+            <div class="code-block"><pre><code>Sequential model;
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(1, 32, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::MaxPool2d&lt;float&gt;&gt;(2, 2));
+model.add(std::make_shared&lt;vc::nn::Conv2d&lt;float&gt;&gt;(32, 64, 3, 1, 1));
+model.add(std::make_shared&lt;vc::nn::ReLU&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::MaxPool2d&lt;float&gt;&gt;(2, 2));
+model.add(std::make_shared&lt;vc::nn::Flatten&lt;float&gt;&gt;());
+model.add(std::make_shared&lt;vc::nn::Dense&lt;float&gt;&gt;(64 * 7 * 7, 128, "relu"));
+model.add(std::make_shared&lt;vc::nn::Dense&lt;float&gt;&gt;(128, 10, "none"));
 
-<span class="cm">// Move to GPU</span>
-model.<span class="fn">to</span>(<span class="st">"cuda"</span>);
+model.to("cuda");
+model.compile("adam");
+model.fit(train_samples, 25, 0.001f, 64, 5);
+model.evaluate(test_samples, 64);
+model.save("docs/weights.json");</code></pre></div>
+        </section>
 
-<span class="cm">// Train with early stopping (patience = 5, min_delta = 0.001)</span>
-model.<span class="fn">fit</span>(train_dataset, <span class="nu">50</span>, <span class="nu">0.01</span>, <span class="nu">128</span>, <span class="nu">5</span>, <span class="nu">0.001f</span>);
-
-<span class="cm">// Save model</span>
-model.<span class="fn">save</span>(<span class="st">"mnist_model.json"</span>);</code></pre>
-
-            <footer class="footer">
-                <p>Built from scratch by Marwan Mahmoud</p>
-            </footer>
-        
-        </main>
-    </div>
+        <footer class="footer"><p>Built from scratch by Marwan Mahmoud</p></footer>
+    </main>
+</div>
 </body>
 </html>
